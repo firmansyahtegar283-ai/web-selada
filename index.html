@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Farming Selada - Kelompok 7</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#eaf0ec;--panel:#fff;--ink:#15261e;--muted:#5d6f66;--line:#d3ddd6;--side:#0e3b36;--side-ink:#cfe5dc;--accent:#8bd450;--accent-ink:#0e3b36;--ok:#2f9e5b;--warn:#d98a0b;--bad:#d64545;--temp:#e8890c;--hum:#2f7fd1;--soil:#2f9e5b;--pur:#7c5cd6;--grid:rgba(21,38,30,.08);--sw:260px;color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0c1714;--panel:#13241f;--ink:#e3efe9;--muted:#8fa69b;--line:#254036;--side:#081f1c;--side-ink:#a9c7ba;--grid:rgba(227,239,233,.09);color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0c1714;--panel:#13241f;--ink:#e3efe9;--muted:#8fa69b;--line:#254036;--side:#081f1c;--side-ink:#a9c7ba;--grid:rgba(227,239,233,.09);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+/* sidebar */
+.side{position:fixed;inset:0 auto 0 0;width:var(--sw);background:var(--side);color:var(--side-ink);padding:16px 12px;display:flex;flex-direction:column;gap:18px;z-index:30;transition:width .2s,transform .2s;overflow:hidden}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px;white-space:nowrap}
+.brand .lg{font-size:1.7rem}.brand b{color:#fff;display:block;line-height:1.2}.brand small{opacity:.75;font-size:.72rem}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav button{display:flex;align-items:center;gap:12px;background:none;border:0;padding:10px;border-radius:10px;color:var(--side-ink);cursor:pointer;font-weight:600;font-size:.9rem;white-space:nowrap;text-align:left;border-left:4px solid transparent}
+.nav button span.i{font-size:1.15rem;width:24px;text-align:center}
+.nav button:hover{background:rgba(255,255,255,.07)}
+.nav button.on{background:rgba(255,255,255,.1);color:#fff;border-left-color:var(--accent)}
+.nav .cnt{margin-left:auto;background:var(--bad);color:#fff;border-radius:99px;font-size:.7rem;padding:0 7px;display:none}
+.sfoot{margin-top:auto;font-size:.75rem;opacity:.8;padding:0 6px;white-space:nowrap}
+.wrap{margin-left:var(--sw);transition:margin .2s;min-height:100vh}
+body.mini{--sw:72px}
+body.mini .brand div,body.mini .nav button .t,body.mini .sfoot,body.mini .cnt{display:none}
+.scrim{display:none}
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line)}
+.burger{background:none;border:1px solid var(--line);border-radius:10px;width:42px;height:42px;cursor:pointer;display:grid;place-items:center}
+.burger svg{width:22px;height:22px;stroke:var(--ink)}
+.bar h1{margin:0;font-size:1.1rem;flex:1}
+.pill{display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;padding:5px 12px;border-radius:99px;background:var(--bg)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--warn)}.dot.ok{background:var(--ok)}.dot.err{background:var(--bad)}
+main{padding:24px;max-width:1250px}
+.page{display:none;gap:16px}.page.on{display:grid}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.panel h2{margin:0 0 4px;font-size:1.05rem}.panel h3{margin:0 0 10px;font-size:.95rem}
+.hint{color:var(--muted);font-size:.82rem;margin:0 0 12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.tile{border-top:5px solid var(--line)}.tile.t{border-top-color:var(--temp)}.tile.h{border-top-color:var(--hum)}.tile.s{border-top-color:var(--soil)}.tile.p{border-top-color:var(--pur)}
+.tile small{color:var(--muted);font-weight:600}.tile .n{font-size:2rem;font-weight:800;line-height:1.1;margin:6px 0}
+.badge{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.badge.ok{background:rgba(47,158,91,.15);color:var(--ok)}.badge.warn{background:rgba(217,138,11,.18);color:var(--warn)}.badge.bad{background:rgba(214,69,69,.15);color:var(--bad)}
+.chart{position:relative;height:290px}.chart.sm{height:220px}
+.gauge{text-align:center}.gauge svg{width:150px;height:150px}.gauge .tr{stroke:var(--line)}.gauge .br{transition:stroke-dashoffset .6s,stroke .3s}.gauge text{font-size:30px;font-weight:800;fill:var(--ink)}
+.row{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.88rem}.row:last-child{border:0}
+label{display:block;font-size:.8rem;font-weight:700;margin:10px 0 4px;color:var(--muted)}
+input,select{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+input[type=checkbox]{width:auto}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:800;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.alt{background:var(--bg);color:var(--ink);border:1px solid var(--line)}.btn.bad{background:var(--bad);color:#fff}.btn.blue{background:var(--hum);color:#fff}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.scroll{overflow-x:auto;max-height:420px}table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:520px}
+th,td{padding:9px;text-align:left;border-bottom:1px solid var(--line)}th{position:sticky;top:0;background:var(--panel);color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:22px}
+.cam{background:#000;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center;color:#9ab;font-size:.85rem;text-align:center}
+.cam img{width:100%;height:100%;object-fit:contain;display:block}
+.pump{display:flex;align-items:center;gap:14px}.pump .ic{font-size:2.4rem}
+.alert{padding:10px 12px;border-radius:10px;border:1px solid var(--line);margin-bottom:8px;font-size:.85rem;display:flex;gap:10px}
+.alert.warn{border-color:var(--warn);background:rgba(217,138,11,.1)}.alert.ok{border-color:var(--ok);background:rgba(47,158,91,.1)}
+.alert time{margin-left:auto;color:var(--muted);white-space:nowrap}
+.steps{margin:0;padding-left:20px;font-size:.88rem}.steps li{margin-bottom:6px}
+code{background:var(--bg);padding:1px 6px;border-radius:6px;font-size:.8rem}
+@media(max-width:900px){
+ .side{transform:translateX(-100%);width:260px}body.open .side{transform:none}
+ body.open .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25}
+ body.mini{--sw:260px}body.mini .brand div,body.mini .nav button .t,body.mini .sfoot{display:revert}
+ .wrap,body.mini .wrap{margin-left:0}
+ .g4,.g3,.g2{grid-template-columns:1fr 1fr}main{padding:14px}.bar{padding:10px 14px}
+}
+@media(max-width:560px){.g4,.g3,.g2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside class="side" id="side">
+  <div class="brand"><span class="lg">🥬</span><div><b>Smart Farming</b><small>Selada Keriting · Kelompok 7</small></div></div>
+  <nav class="nav" id="nav">
+    <button data-p="ringkasan" class="on"><span class="i">🏠</span><span class="t">Ringkasan</span></button>
+    <button data-p="grafik"><span class="i">📈</span><span class="t">Grafik sensor</span></button>
+    <button data-p="kamera"><span class="i">📷</span><span class="t">Kamera ESP32-CAM</span></button>
+    <button data-p="pompa"><span class="i">💧</span><span class="t">Pompa & otomasi</span></button>
+    <button data-p="prediksi"><span class="i">🔮</span><span class="t">Prediksi</span></button>
+    <button data-p="riwayat"><span class="i">🗂️</span><span class="t">Riwayat data</span></button>
+    <button data-p="notif"><span class="i">🔔</span><span class="t">Notifikasi</span><span class="cnt" id="cnt">0</span></button>
+    <button data-p="setelan"><span class="i">⚙️</span><span class="t">Pengaturan</span></button>
+    <button data-p="panduan"><span class="i">📘</span><span class="t">Panduan koneksi</span></button>
+  </nav>
+  <div class="sfoot">Firebase Realtime DB<br>ESP32 + DHT22 + Soil + Relay</div>
+</aside>
+<div class="scrim" id="scrim"></div>
+ 
+<div class="wrap">
+<header class="bar">
+  <button class="burger" id="burger" aria-label="Buka atau tutup menu"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <h1 id="title">Ringkasan</h1>
+  <div class="pill" title="Status koneksi Firebase"><span class="dot" id="fbDot"></span><span id="fbTxt">Menunggu data</span></div>
+  <div class="pill" id="clock">--:--:--</div>
+</header>
+<main>
+ 
+<!-- RINGKASAN -->
+<section class="page on" id="p-ringkasan">
+  <div class="g4">
+    <div class="panel tile t"><small>Suhu udara (DHT22)</small><div class="n" id="vT">-- °C</div><span class="badge" id="bT">Menunggu</span></div>
+    <div class="panel tile h"><small>Kelembapan udara</small><div class="n" id="vH">-- %</div><span class="badge" id="bH">Menunggu</span></div>
+    <div class="panel tile s"><small>Kelembapan tanah</small><div class="n" id="vS">-- %</div><span class="badge" id="bS">Menunggu</span></div>
+    <div class="panel tile p"><small>Pompa air (relay)</small><div class="n" id="vP">--</div><span class="badge" id="bP">Menunggu</span></div>
+  </div>
+  <div class="g2" style="grid-template-columns:240px 1fr">
+    <div class="panel gauge">
+      <svg viewBox="0 0 120 120"><circle class="tr" cx="60" cy="60" r="50" fill="none" stroke-width="10"/><circle id="gBar" class="br" cx="60" cy="60" r="50" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314" stroke="#888" transform="rotate(-90 60 60)"/><text id="gTxt" x="60" y="68" text-anchor="middle">--</text></svg>
+      <div class="hint" style="margin:6px 0 0">Indeks kesehatan tanaman<br><b id="gLbl">Standby</b></div>
+    </div>
+    <div class="panel"><h2>Tren terbaru</h2><div class="chart sm"><canvas id="cMini"></canvas></div></div>
+  </div>
+  <div class="g3">
+    <div class="panel"><h3>Statistik sesi (suhu)</h3><div id="stT"></div></div>
+    <div class="panel"><h3>Statistik sesi (kelembapan udara)</h3><div id="stH"></div></div>
+    <div class="panel"><h3>Statistik sesi (kelembapan tanah)</h3><div id="stS"></div></div>
+  </div>
+</section>
+ 
+<!-- GRAFIK -->
+<section class="page" id="p-grafik">
+  <div class="panel">
+    <div class="row" style="border:0;align-items:center"><h2>Semua sensor</h2>
+      <select id="range" style="width:auto"><option value="20">20 titik terakhir</option><option value="60" selected>60 titik terakhir</option><option value="200">200 titik terakhir</option></select></div>
+    <div class="chart"><canvas id="cAll"></canvas></div>
+  </div>
+  <div class="g2">
+    <div class="panel"><h3>Suhu & kelembapan udara</h3><div class="chart sm"><canvas id="cDht"></canvas></div></div>
+    <div class="panel"><h3>Kelembapan tanah dan batas pompa</h3><div class="chart sm"><canvas id="cSoil"></canvas></div></div>
+  </div>
+</section>
+ 
+<!-- KAMERA -->
+<section class="page" id="p-kamera">
+  <div class="g2" style="grid-template-columns:2fr 1fr">
+    <div class="panel"><h2>Live view</h2><p class="hint">Stream berjalan di port 81 agar port 80 tetap bebas untuk tombol kontrol.</p>
+      <div class="cam" id="cam">Masukkan IP kamera di Pengaturan, lalu tekan Mulai stream.</div>
+      <div class="btns"><button class="btn" id="camOn">Mulai stream</button><button class="btn alt" id="camOff">Hentikan</button><button class="btn blue" id="camShot">Ambil foto</button></div>
+    </div>
+    <div class="panel"><h2>Kontrol kamera</h2>
+      <div class="row"><span>IP kamera</span><b id="camIpTxt">-</b></div>
+      <div class="row"><span>Alamat stream</span><code id="camUrl">-</code></div>
+      <div class="btns"><button class="btn" id="camFlash">Nyalakan / matikan flash</button><button class="btn alt" id="camPortal">Buka portal kamera</button><button class="btn bad" id="camReset">Ganti jaringan WiFi</button></div>
+      <p class="hint" style="margin-top:12px" id="camMsg">Flash adalah tombol toggle: setiap tekan membalik status lampu.</p>
+    </div>
+  </div>
+</section>
+ 
+<!-- POMPA -->
+<section class="page" id="p-pompa">
+  <div class="g2">
+    <div class="panel"><h2>Status pompa</h2>
+      <div class="pump"><span class="ic" id="pIc">💤</span><div><b id="pTxt" style="font-size:1.3rem">--</b><div class="hint" style="margin:0" id="pWhy">Menunggu data sensor.</div></div></div>
+      <div style="margin-top:12px"><div class="row"><span>Kelembapan tanah sekarang</span><b id="pSoil">-- %</b></div>
+      <div class="row"><span>Pompa menyala di bawah</span><b id="pLow">--</b></div>
+      <div class="row"><span>Dianggap terlalu basah di atas</span><b id="pHigh">--</b></div>
+      <div class="row"><span>Pembacaan dengan pompa ON (sesi ini)</span><b id="pCnt">0</b></div>
+      <div class="row"><span>Perkiraan durasi pompa ON</span><b id="pDur">0 dtk</b></div></div>
+    </div>
+    <div class="panel"><h2>Logika otomasi di ESP32</h2>
+      <p class="hint">Pompa dikendalikan langsung oleh firmware. Dashboard hanya menampilkan statusnya.</p>
+      <div class="row"><span>Soil kurang dari batas bawah</span><b>Pompa ON</b></div>
+      <div class="row"><span>Soil di antara batas bawah dan atas</span><b>Pompa OFF (Normal)</b></div>
+      <div class="row"><span>Soil di atas batas atas</span><b>Pompa OFF (Basah)</b></div>
+      <div class="row"><span>Kalibrasi kering / basah</span><b>4000 / 2800</b></div>
+      <div class="row"><span>Filter sensor</span><b>Exponential 0,2</b></div>
+      <div class="chart sm" style="margin-top:12px"><canvas id="cPump"></canvas></div>
+    </div>
+  </div>
+</section>
+ 
+<!-- PREDIKSI -->
+<section class="page" id="p-prediksi">
+  <div class="panel"><h2>Prediksi tren (regresi linear)</h2><p class="hint">Dihitung dari 20 pembacaan terakhir. Ini perkiraan sederhana, bukan model LSTM.</p>
+    <div class="chart"><canvas id="cFc"></canvas></div></div>
+  <div class="g3">
+    <div class="panel tile s"><small>Arah kelembapan tanah</small><div class="n" id="fSlope">--</div><span class="badge" id="fTrend">Menunggu data</span></div>
+    <div class="panel tile p"><small>Perkiraan mencapai batas pompa ON</small><div class="n" id="fEta">--</div><span class="badge">Berdasarkan laju saat ini</span></div>
+    <div class="panel tile t"><small>Suhu 10 pembacaan ke depan</small><div class="n" id="fTemp">--</div><span class="badge">Perkiraan</span></div>
+  </div>
+</section>
+ 
+<!-- RIWAYAT -->
+<section class="page" id="p-riwayat">
+  <div class="panel">
+    <div class="row" style="border:0;align-items:center;flex-wrap:wrap"><h2>Riwayat data</h2>
+      <div class="btns" style="margin:0"><button class="btn alt" id="btnReload">Muat ulang dari Firebase</button><button class="btn" id="btnCsv">Unduh CSV</button><button class="btn bad" id="btnClear">Hapus tampilan</button></div></div>
+    <div class="scroll"><table><thead><tr><th>Waktu</th><th>Suhu</th><th>Kelembapan udara</th><th>Kelembapan tanah</th><th>Status tanah</th><th>Pompa</th></tr></thead><tbody id="tb"></tbody></table></div>
+  </div>
+</section>
+ 
+<!-- NOTIF -->
+<section class="page" id="p-notif">
+  <div class="panel"><div class="row" style="border:0;align-items:center"><h2>Log peringatan</h2><button class="btn alt" id="btnAlertClr">Bersihkan</button></div>
+    <p class="hint">Peringatan dicatat saat kondisi berubah, bukan di setiap pembacaan.</p><div id="alerts"></div></div>
+</section>
+ 
+<!-- SETELAN -->
+<section class="page" id="p-setelan">
+  <div class="g2">
+    <div class="panel"><h2>Sumber data</h2>
+      <label>URL Firebase (node data)</label><input id="sUrl">
+      <label>Interval ambil data (milidetik)</label><input id="sPoll" type="number" min="1000" step="500">
+      <label><input type="checkbox" id="sDemo"> Mode demo (data simulasi, tanpa hardware)</label>
+      <label>Tema</label><select id="sTheme"><option value="auto">Ikuti perangkat</option><option value="light">Terang</option><option value="dark">Gelap</option></select>
+    </div>
+    <div class="panel"><h2>ESP32-CAM</h2>
+      <label>Alamat IP kamera</label><input id="sCam" placeholder="contoh: 192.168.1.50">
+      <div class="g2"><div><label>Port kontrol</label><input id="sCp" type="number"></div><div><label>Port stream</label><input id="sSp" type="number"></div></div>
+    </div>
+    <div class="panel"><h2>Ambang batas tanaman</h2>
+      <div class="g2"><div><label>Suhu min (°C)</label><input id="sTmin" type="number"></div><div><label>Suhu maks (°C)</label><input id="sTmax" type="number"></div>
+      <div><label>Udara min (%)</label><input id="sHmin" type="number"></div><div><label>Udara maks (%)</label><input id="sHmax" type="number"></div>
+      <div><label>Tanah min / pompa ON (%)</label><input id="sSmin" type="number"></div><div><label>Tanah maks (%)</label><input id="sSmax" type="number"></div></div>
+      <p class="hint" style="margin-top:10px">Samakan batas tanah dengan firmware (60 dan 80) agar status pompa akurat.</p>
+    </div>
+    <div class="panel"><h2>Simpan</h2><p class="hint">Pengaturan disimpan di browser ini.</p>
+      <div class="btns"><button class="btn" id="btnSave">Simpan pengaturan</button><button class="btn alt" id="btnDef">Kembalikan bawaan</button></div><p class="hint" id="saveMsg" style="margin-top:10px"></p></div>
+  </div>
+</section>
+ 
+<!-- PANDUAN -->
+<section class="page" id="p-panduan">
+  <div class="g2">
+    <div class="panel"><h2>Menyambungkan sensor</h2>
+      <ol class="steps"><li>Nyalakan ESP32 sensor. Jika belum ada WiFi, sambungkan HP ke hotspot <code>esp selada keriting</code>, lalu buka <code>192.168.4.1</code>.</li>
+      <li>Pilih WiFi rumah atau hotspot, lalu simpan.</li>
+      <li>ESP32 mengirim data ke Firebase tiap 1 detik.</li>
+      <li>Buka Pengaturan di dashboard ini dan pastikan URL Firebase benar.</li></ol></div>
+    <div class="panel"><h2>Menyambungkan kamera</h2>
+      <ol class="steps"><li>Sambungkan ke WiFi <code>ESP32-CAM-SELADA</code> dan buka <code>192.168.4.1</code>.</li>
+      <li>Isi SSID dan password WiFi, lalu catat IP yang muncul.</li>
+      <li>Masukkan IP itu di Pengaturan, lalu buka menu Kamera.</li>
+      <li>Jika dashboard dibuka lewat https, browser memblokir stream http. Buka file ini langsung dari komputer.</li></ol></div>
+    <div class="panel"><h2>Catatan penting</h2>
+      <ol class="steps"><li>Kode ESP32 memakai <code>POST</code>, sehingga Firebase membuat satu catatan baru tiap detik dan database akan terus membesar. Pertimbangkan <code>PUT</code> untuk data terbaru, atau kirim tiap beberapa detik.</li>
+      <li>Aturan database Firebase harus mengizinkan baca untuk dashboard ini.</li></ol></div>
+  </div>
+</section>
+ 
+</main></div>
+ 
+<script>
+const $=id=>document.getElementById(id),css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const DEF={url:'https://smart-farming-selada-default-rtdb.asia-southeast1.firebasedatabase.app/kelompok2.json',poll:2000,demo:false,theme:'auto',cam:'',cp:80,sp:81,tmin:20,tmax:28,hmin:60,hmax:80,smin:60,smax:80};
+let S={...DEF};try{S={...DEF,...JSON.parse(localStorage.getItem('selada')||'{}')}}catch(e){}
+let rows=[],seen=new Set(),alerts=[],lastState='',unread=0,timer=null,demoT=26,demoS=70,charts={};
+const TITLES={ringkasan:'Ringkasan',grafik:'Grafik sensor',kamera:'Kamera ESP32-CAM',pompa:'Pompa & otomasi',prediksi:'Prediksi',riwayat:'Riwayat data',notif:'Notifikasi',setelan:'Pengaturan',panduan:'Panduan koneksi'};
+ 
+/* navigasi + hamburger */
+function go(p){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='p-'+p));
+ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+ $('title').textContent=TITLES[p];document.body.classList.remove('open');
+ if(p==='notif'){unread=0;badge()}setTimeout(()=>Object.values(charts).forEach(c=>c.resize()),60)}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.p));
+$('burger').onclick=()=>{innerWidth<=900?document.body.classList.toggle('open'):document.body.classList.toggle('mini');setTimeout(()=>Object.values(charts).forEach(c=>c.resize()),250)};
+$('scrim').onclick=()=>document.body.classList.remove('open');
+setInterval(()=>$('clock').textContent=new Date().toLocaleTimeString('id-ID'),1000);
+ 
+/* tema */
+function theme(){const r=document.documentElement;S.theme==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',S.theme);
+ if(charts.all){Chart.defaults.color=css('--muted');Chart.defaults.borderColor=css('--grid');Object.values(charts).forEach(c=>c.update())}}
+ 
+/* push-ID Firebase -> waktu */
+const PC='-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+function pushTime(k){if(!k||k.length<8)return null;let t=0;for(let i=0;i<8;i++){const x=PC.indexOf(k[i]);if(x<0)return null;t=t*64+x}return t>1.4e12&&t<4e12?t:null}
+ 
+/* ambil data */
+async function fetchFb(limit){
+ const u=S.url+(S.url.includes('?')?'&':'?')+'orderBy=%22$key%22&limitToLast='+limit;
+ const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+function ingest(obj){
+ if(!obj)return 0;let list=[];
+ if(obj.suhu!==undefined){list=[['single'+Date.now(),obj]]}
+ else list=Object.entries(obj).filter(([k,v])=>v&&typeof v==='object'&&v.suhu!==undefined);
+ list.sort((a,b)=>a[0]<b[0]?-1:1);let n=0;
+ for(const[k,v]of list){if(seen.has(k))continue;seen.add(k);
+  addRow({t:pushTime(k)||Date.now(),temp:+v.suhu,hum:+v.kelembapan_udara,soil:+v.kelembapan_tanah,status:v.status||'-'});n++}
+ return n}
+function addRow(r){r.pump=r.soil<S.smin;rows.push(r);if(rows.length>300)rows.shift();checkAlert(r)}
+async function loadAll(){
+ rows=[];seen=new Set();
+ if(S.demo){for(let i=0;i<30;i++)demoTick(Date.now()-(30-i)*S.poll);return refresh()}
+ try{ingest(await fetchFb(60));fbState('ok');refresh()}catch(e){fbState('err',e.message)}}
+async function poll(){
+ if(S.demo){demoTick(Date.now());fbState('ok','Mode demo');return refresh()}
+ try{const n=ingest(await fetchFb(1));fbState('ok');if(n)refresh()}catch(e){fbState('err',e.message)}}
+function demoTick(t){demoT+=(Math.random()-.48)*.5;demoT=Math.min(33,Math.max(19,demoT));
+ demoS+=(demoS<S.smin?4:-(Math.random()*1.6));demoS=Math.min(95,Math.max(30,demoS));
+ const h=62+(Math.random()-.5)*10,st=demoS<S.smin?'Kering':demoS>S.smax?'Basah':'Normal';
+ addRow({t,temp:+demoT.toFixed(1),hum:+h.toFixed(0),soil:Math.round(demoS),status:st})}
+function fbState(s,m){$('fbDot').className='dot '+(s==='ok'?'ok':'err');$('fbTxt').textContent=s==='ok'?(m||'Terhubung ke Firebase'):'Gagal: '+m}
+function restart(){clearInterval(timer);timer=setInterval(poll,Math.max(1000,S.poll))}
+ 
+/* peringatan */
+function stateOf(r){const m=[];if(r.temp>S.tmax)m.push('Suhu tinggi ('+r.temp+' °C)');if(r.temp<S.tmin)m.push('Suhu rendah ('+r.temp+' °C)');
+ if(r.hum<S.hmin)m.push('Udara terlalu kering ('+r.hum+'%)');if(r.hum>S.hmax)m.push('Udara terlalu lembap ('+r.hum+'%)');
+ if(r.soil<S.smin)m.push('Tanah kering ('+r.soil+'%), pompa menyala');if(r.soil>S.smax)m.push('Tanah terlalu basah ('+r.soil+'%)');return m}
+function checkAlert(r){const m=stateOf(r),key=m.length?m.map(x=>x.split(' (')[0]).join('|'):'ok';if(key===lastState)return;lastState=key;
+ alerts.unshift({t:r.t,ok:!m.length,txt:m.length?m.join(', '):'Semua parameter kembali normal'});alerts=alerts.slice(0,50);
+ if(m.length){unread++;badge()}renderAlerts()}
+function badge(){const c=$('cnt');c.textContent=unread;c.style.display=unread?'inline-block':'none'}
+function renderAlerts(){$('alerts').innerHTML=alerts.length?alerts.map(a=>`<div class="alert ${a.ok?'ok':'warn'}"><span>${a.ok?'✅':'⚠️'}</span><span>${a.txt}</span><time>${new Date(a.t).toLocaleTimeString('id-ID')}</time></div>`).join(''):'<div class="empty">Belum ada peringatan.</div>'}
+ 
+/* statistik & regresi */
+const col=k=>rows.map(r=>r[k]);
+function stats(a){if(!a.length)return null;return{min:Math.min(...a),max:Math.max(...a),avg:a.reduce((x,y)=>x+y,0)/a.length}}
+function reg(a){const n=a.length;if(n<3)return null;let sx=0,sy=0,sxy=0,sxx=0;a.forEach((y,x)=>{sx+=x;sy+=y;sxy+=x*y;sxx+=x*x});const d=n*sxx-sx*sx;if(!d)return null;const m=(n*sxy-sx*sy)/d;return{m,b:(sy-m*sx)/n,n}}
+const bdg=(id,ok,a,b)=>{const e=$(id);e.textContent=ok?a:b;e.className='badge '+(ok?'ok':'warn')};
+const miss=(v,a,b)=>v<a?a-v:v>b?v-b:0;
+ 
+/* grafik */
+const L=()=>rows.map(r=>new Date(r.t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+function ds(l,d,c,f){return{label:l,data:d,borderColor:c,backgroundColor:c+'22',tension:.35,fill:!!f,pointRadius:2}}
+function setup(){
+ Chart.defaults.color=css('--muted');Chart.defaults.borderColor=css('--grid');Chart.defaults.font.family='system-ui,sans-serif';
+ const o={responsive:true,maintainAspectRatio:false,animation:false};const T=css('--temp'),H=css('--hum'),So=css('--soil');
+ charts.mini=new Chart($('cMini'),{type:'line',data:{labels:[],datasets:[ds('Suhu',[],T),ds('Udara',[],H),ds('Tanah',[],So)]},options:o});
+ charts.all=new Chart($('cAll'),{type:'line',data:{labels:[],datasets:[ds('Suhu (°C)',[],T,1),ds('Kelembapan udara (%)',[],H,1),ds('Kelembapan tanah (%)',[],So,1)]},options:o});
+ charts.dht=new Chart($('cDht'),{type:'line',data:{labels:[],datasets:[ds('Suhu (°C)',[],T),ds('Udara (%)',[],H)]},options:o});
+ charts.soil=new Chart($('cSoil'),{type:'line',data:{labels:[],datasets:[ds('Tanah (%)',[],So,1),{label:'Batas pompa ON',data:[],borderColor:css('--bad'),borderDash:[6,5],pointRadius:0}]},options:o});
+   charts.pump=new Chart($('cPump'),{type:'bar',data:{labels:[],datasets:[{label:'Pompa ON (1) / OFF (0)',data:[],backgroundColor:css('--pur')}]},options:{...o,scales:{y:{max:1,ticks:{stepSize:1}}}}});
+ charts.fc=new Chart($('cFc'),{type:'line',data:{labels:[],datasets:[ds('Suhu (°C)',[],T),{...ds('Prediksi suhu',[],T),borderDash:[6,5]},ds('Tanah (%)',[],So),{...ds('Prediksi tanah',[],So),borderDash:[6,5]}]},options:o})}
+ 
+function refresh(){
+ const last=rows[rows.length-1];if(!last){renderTable();return}
+ const lb=L(),n=+$('range').value,cut=a=>a.slice(-n);
+ const set=(c,l,d)=>{c.data.labels=l;d.forEach((x,i)=>c.data.datasets[i].data=x);c.update()};
+ set(charts.mini,lb.slice(-20),[col('temp').slice(-20),col('hum').slice(-20),col('soil').slice(-20)]);
+ set(charts.all,cut(lb),[cut(col('temp')),cut(col('hum')),cut(col('soil'))]);
+ set(charts.dht,cut(lb),[cut(col('temp')),cut(col('hum'))]);
+ set(charts.soil,cut(lb),[cut(col('soil')),cut(col('soil')).map(()=>S.smin)]);
+ set(charts.pump,lb.slice(-40),[rows.slice(-40).map(r=>r.pump?1:0)]);
+ /* kartu */
+ $('vT').textContent=last.temp+' °C';$('vH').textContent=last.hum+' %';$('vS').textContent=last.soil+' %';
+ bdg('bT',last.temp>=S.tmin&&last.temp<=S.tmax,'Optimal','Di luar batas');bdg('bH',last.hum>=S.hmin&&last.hum<=S.hmax,'Normal','Di luar batas');
+ bdg('bS',last.soil>=S.smin&&last.soil<=S.smax,'Ideal',last.soil<S.smin?'Kering':'Terlalu basah');
+ $('vP').textContent=last.pump?'ON':'OFF';$('bP').textContent=last.pump?'Menyiram':'Standby';$('bP').className='badge '+(last.pump?'warn':'ok');
+ /* skor */
+ const pT=Math.min(30,miss(last.temp,S.tmin,S.tmax)*6),pH=Math.min(30,miss(last.hum,S.hmin,S.hmax)*1.5),pS=Math.min(30,miss(last.soil,S.smin,S.smax)*1.5),sc=Math.round(Math.max(0,100-pT-pH-pS));
+ $('gTxt').textContent=sc;$('gLbl').textContent=sc>=90?'Sangat baik':sc>=70?'Perlu perhatian':'Kritis';
+ const g=$('gBar');g.style.strokeDashoffset=314*(1-sc/100);g.style.stroke=sc>=90?css('--ok'):sc>=70?css('--warn'):css('--bad');
+ /* statistik */
+ [['stT','temp',' °C'],['stH','hum',' %'],['stS','soil',' %']].forEach(([id,k,u])=>{const s=stats(col(k));$(id).innerHTML=`<div class="row"><span>Terendah</span><b>${s.min.toFixed(1)}${u}</b></div><div class="row"><span>Rata-rata</span><b>${s.avg.toFixed(1)}${u}</b></div><div class="row"><span>Tertinggi</span><b>${s.max.toFixed(1)}${u}</b></div>`});
+ /* pompa */
+ const on=rows.filter(r=>r.pump).length;
+ $('pIc').textContent=last.pump?'🚿':'💤';$('pTxt').textContent=last.pump?'Pompa menyala':'Pompa mati';
+ $('pWhy').textContent=last.pump?'Tanah kering, penyiraman berjalan.':last.soil>S.smax?'Tanah terlalu basah, tidak perlu menyiram.':'Kelembapan tanah normal.';
+ $('pSoil').textContent=last.soil+' %';$('pLow').textContent=S.smin+' %';$('pHigh').textContent=S.smax+' %';$('pCnt').textContent=on;$('pDur').textContent=Math.round(on*S.poll/1000)+' dtk';
+ forecast();renderTable()}
+ 
+function forecast(){
+ const k=20,t=col('temp').slice(-k),s=col('soil').slice(-k),rt=reg(t),rs=reg(s);if(!rt||!rs)return;
+ const N=10,lb=L().slice(-k).concat(Array.from({length:N},(_,i)=>'+'+(i+1)));
+ const pad=a=>a.concat(Array(N).fill(null)),fut=(a,r)=>Array(a.length-1).fill(null).concat([a[a.length-1]],Array.from({length:N},(_,i)=>+(r.b+r.m*(r.n+i)).toFixed(1)));
+ charts.fc.data.labels=lb;charts.fc.data.datasets[0].data=pad(t);charts.fc.data.datasets[1].data=fut(t,rt);charts.fc.data.datasets[2].data=pad(s);charts.fc.data.datasets[3].data=fut(s,rs);charts.fc.update();
+ const sl=rs.m;$('fSlope').textContent=(sl>=0?'+':'')+sl.toFixed(2)+' %/baca';
+ const tr=$('fTrend');tr.textContent=Math.abs(sl)<.05?'Stabil':sl<0?'Mengering':'Menjadi lebih basah';tr.className='badge '+(Math.abs(sl)<.05?'ok':sl<0?'warn':'');
+ const cur=s[s.length-1];$('fEta').textContent=cur<S.smin?'Sudah di bawah batas':sl<-.05?Math.max(1,Math.ceil((cur-S.smin)/-sl))+' pembacaan (±'+Math.round(Math.max(1,Math.ceil((cur-S.smin)/-sl))*S.poll/1000)+' dtk)':'Tidak dalam waktu dekat';
+ $('fTemp').textContent=(rt.b+rt.m*(rt.n+N-1)).toFixed(1)+' °C'}
+ 
+function renderTable(){const tb=$('tb');if(!rows.length){tb.innerHTML='<tr><td colspan="6" class="empty">Belum ada data. Periksa URL Firebase di Pengaturan atau aktifkan mode demo.</td></tr>';return}
+ tb.innerHTML=rows.slice(-100).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString('id-ID')}</td><td>${r.temp} °C</td><td>${r.hum} %</td><td>${r.soil} %</td><td>${r.status}</td><td><span class="badge ${r.pump?'warn':'ok'}">${r.pump?'ON':'OFF'}</span></td></tr>`).join('')}
+ 
+/* kamera */
+const base=p=>`http://${S.cam}:${p}`;
+function camInfo(){$('camIpTxt').textContent=S.cam||'(belum diisi)';$('camUrl').textContent=S.cam?base(S.sp)+'/stream':'-'}
+function needCam(){if(!S.cam){$('camMsg').textContent='Isi IP kamera di Pengaturan terlebih dahulu.';go('setelan');return false}return true}
+$('camOn').onclick=()=>{if(!needCam())return;$('cam').innerHTML=`<img alt="Live video" src="${base(S.sp)}/stream?${Date.now()}" onerror="this.parentNode.textContent='Stream tidak bisa dimuat. Periksa IP, jaringan, dan port.'">`};
+$('camOff').onclick=()=>{$('cam').innerHTML='Stream dihentikan.'};
+$('camShot').onclick=()=>{if(needCam())window.open(base(S.cp)+'/capture','_blank')};
+const ctl=async(path,msg)=>{if(!needCam())return;try{await fetch(base(S.cp)+path,{mode:'no-cors'});$('camMsg').textContent=msg}catch(e){$('camMsg').textContent='Perintah gagal dikirim: '+e.message}};
+$('camFlash').onclick=()=>ctl('/flash','Perintah flash terkirim. Status lampu dibalik.');
+$('camReset').onclick=()=>{if(confirm('Hapus WiFi tersimpan di kamera?'))ctl('/resetwifi','WiFi kamera direset. Sambungkan ulang lewat 192.168.4.1.')};
+$('camPortal').onclick=()=>{if(needCam())window.open(base(S.cp)+'/','_blank')};
+ 
+/* riwayat */
+$('range').onchange=refresh;$('btnReload').onclick=loadAll;
+$('btnClear').onclick=()=>{rows=[];renderTable();['mini','all','dht','soil'].forEach(k=>{charts[k].data.labels=[];charts[k].data.datasets.forEach(d=>d.data=[]);charts[k].update()})};
+$('btnCsv').onclick=()=>{if(!rows.length)return;const csv='waktu,suhu,kelembapan_udara,kelembapan_tanah,status,pompa\n'+rows.map(r=>[new Date(r.t).toISOString(),r.temp,r.hum,r.soil,r.status,r.pump?'ON':'OFF'].join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='riwayat-selada.csv';a.click()};
+$('btnAlertClr').onclick=()=>{alerts=[];renderAlerts()};
+ 
+/* pengaturan */
+const F={sUrl:'url',sPoll:'poll',sCam:'cam',sCp:'cp',sSp:'sp',sTmin:'tmin',sTmax:'tmax',sHmin:'hmin',sHmax:'hmax',sSmin:'smin',sSmax:'smax',sTheme:'theme'};
+function fill(){Object.entries(F).forEach(([i,k])=>$(i).value=S[k]);$('sDemo').checked=S.demo;camInfo()}
+$('btnSave').onclick=()=>{Object.entries(F).forEach(([i,k])=>{const v=$(i).value.trim();S[k]=typeof DEF[k]==='number'?(+v||DEF[k]):v});S.demo=$('sDemo').checked;
+ try{localStorage.setItem('selada',JSON.stringify(S))}catch(e){}
+ $('saveMsg').textContent='Tersimpan.';theme();camInfo();restart();loadAll()};
+$('btnDef').onclick=()=>{S={...DEF};try{localStorage.removeItem('selada')}catch(e){}fill();theme();restart();loadAll();$('saveMsg').textContent='Pengaturan dikembalikan ke bawaan.'};
+ 
+setup();fill();theme();renderAlerts();renderTable();restart();loadAll();
+</script>
+</body>
+</html>
