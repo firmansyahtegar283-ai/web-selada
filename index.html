@@ -1,1455 +1,515 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Smart Farming Selada - Kelompok 7</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --bg: #eaf0ec;
-      --panel: #fff;
-      --ink: #15261e;
-      --muted: #5d6f66;
-      --line: #d3ddd6;
-      --side: #0e3b36;
-      --side-ink: #cfe5dc;
-      --accent: #8bd450;
-      --accent-ink: #0e3b36;
-      --ok: #2f9e5b;
-      --warn: #d98a0b;
-      --bad: #d64545;
-      --temp: #e8890c;
-      --hum: #2f7fd1;
-      --soil: #2f9e5b;
-      --pur: #7c5cd6;
-      --grid: rgba(21, 38, 30, .08);
-      --sw: 260px;
-      color-scheme: light
-    }
-
-    @media(prefers-color-scheme:dark) {
-      :root:not([data-theme=light]) {
-        --bg: #0c1714;
-        --panel: #13241f;
-        --ink: #e3efe9;
-        --muted: #8fa69b;
-        --line: #254036;
-        --side: #081f1c;
-        --side-ink: #a9c7ba;
-        --grid: rgba(227, 239, 233, .09);
-        color-scheme: dark
-      }
-    }
-
-    :root[data-theme=dark] {
-      --bg: #0c1714;
-      --panel: #13241f;
-      --ink: #e3efe9;
-      --muted: #8fa69b;
-      --line: #254036;
-      --side: #081f1c;
-      --side-ink: #a9c7ba;
-      --grid: rgba(227, 239, 233, .09);
-      color-scheme: dark
-    }
-
-    * {
-      box-sizing: border-box
-    }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      line-height: 1.5
-    }
-
-    button,
-    input,
-    select {
-      font: inherit;
-      color: inherit
-    }
-
-    :focus-visible {
-      outline: 3px solid var(--accent);
-      outline-offset: 2px
-    }
-
-    /* sidebar */
-    .side {
-      position: fixed;
-      inset: 0 auto 0 0;
-      width: var(--sw);
-      background: var(--side);
-      color: var(--side-ink);
-      padding: 16px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      z-index: 30;
-      transition: width .2s, transform .2s;
-      overflow: hidden
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0 6px;
-      white-space: nowrap
-    }
-
-    .brand .lg {
-      font-size: 1.7rem
-    }
-
-    .brand b {
-      color: #fff;
-      display: block;
-      line-height: 1.2
-    }
-
-    .brand small {
-      opacity: .75;
-      font-size: .72rem
-    }
-
-    .nav {
-      display: flex;
-      flex-direction: column;
-      gap: 3px
-    }
-
-    .nav button {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: none;
-      border: 0;
-      padding: 10px;
-      border-radius: 10px;
-      color: var(--side-ink);
-      cursor: pointer;
-      font-weight: 600;
-      font-size: .9rem;
-      white-space: nowrap;
-      text-align: left;
-      border-left: 4px solid transparent
-    }
-
-    .nav button span.i {
-      font-size: 1.15rem;
-      width: 24px;
-      text-align: center
-    }
-
-    .nav button:hover {
-      background: rgba(255, 255, 255, .07)
-    }
-
-    .nav button.on {
-      background: rgba(255, 255, 255, .1);
-      color: #fff;
-      border-left-color: var(--accent)
-    }
-
-    .nav .cnt {
-      margin-left: auto;
-      background: var(--bad);
-      color: #fff;
-      border-radius: 99px;
-      font-size: .7rem;
-      padding: 0 7px;
-      display: none
-    }
-
-    .sfoot {
-      margin-top: auto;
-      font-size: .75rem;
-      opacity: .8;
-      padding: 0 6px;
-      white-space: nowrap
-    }
-
-    .wrap {
-      margin-left: var(--sw);
-      transition: margin .2s;
-      min-height: 100vh
-    }
-
-    body.mini {
-      --sw: 72px
-    }
-
-    body.mini .brand div,
-    body.mini .nav button .t,
-    body.mini .sfoot,
-    body.mini .cnt {
-      display: none
-    }
-
-    .scrim {
-      display: none
-    }
-
-    .bar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 24px;
-      background: var(--panel);
-      border-bottom: 1px solid var(--line)
-    }
-
-    .burger {
-      background: none;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      width: 42px;
-      height: 42px;
-      cursor: pointer;
-      display: grid;
-      place-items: center
-    }
-
-    .burger svg {
-      width: 22px;
-      height: 22px;
-      stroke: var(--ink)
-    }
-
-    .bar h1 {
-      margin: 0;
-      font-size: 1.1rem;
-      flex: 1
-    }
-
-    .pill {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: .8rem;
-      font-weight: 700;
-      padding: 5px 12px;
-      border-radius: 99px;
-      background: var(--bg)
-    }
-
-    .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--warn)
-    }
-
-    .dot.ok {
-      background: var(--ok)
-    }
-
-    .dot.err {
-      background: var(--bad)
-    }
-
-    main {
-      padding: 24px;
-      max-width: 1250px
-    }
-
-    .page {
-      display: none;
-      gap: 16px
-    }
-
-    .page.on {
-      display: grid
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 18px;
-      min-width: 0
-    }
-
-    .panel h2 {
-      margin: 0 0 4px;
-      font-size: 1.05rem
-    }
-
-    .panel h3 {
-      margin: 0 0 10px;
-      font-size: .95rem
-    }
-
-    .hint {
-      color: var(--muted);
-      font-size: .82rem;
-      margin: 0 0 12px
-    }
-
-    .g4 {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px
-    }
-
-    .g2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px
-    }
-
-    .g3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px
-    }
-
-    .tile {
-      border-top: 5px solid var(--line)
-    }
-
-    .tile.t {
-      border-top-color: var(--temp)
-    }
-
-    .tile.h {
-      border-top-color: var(--hum)
-    }
-
-    .tile.s {
-      border-top-color: var(--soil)
-    }
-
-    .tile.p {
-      border-top-color: var(--pur)
-    }
-
-    .tile small {
-      color: var(--muted);
-      font-weight: 600
-    }
-
-    .tile .n {
-      font-size: 2rem;
-      font-weight: 800;
-      line-height: 1.1;
-      margin: 6px 0
-    }
-
-    .badge {
-      display: inline-block;
-      font-size: .75rem;
-      font-weight: 700;
-      padding: 2px 10px;
-      border-radius: 99px;
-      background: var(--bg);
-      color: var(--muted)
-    }
-
-    .badge.ok {
-      background: rgba(47, 158, 91, .15);
-      color: var(--ok)
-    }
-
-    .badge.warn {
-      background: rgba(217, 138, 11, .18);
-      color: var(--warn)
-    }
-
-    .badge.bad {
-      background: rgba(214, 69, 69, .15);
-      color: var(--bad)
-    }
-
-    .chart {
-      position: relative;
-      height: 290px
-    }
-
-    .chart.sm {
-      height: 220px
-    }
-
-    .gauge {
-      text-align: center
-    }
-
-    .gauge svg {
-      width: 150px;
-      height: 150px
-    }
-
-    .gauge .tr {
-      stroke: var(--line)
-    }
-
-    .gauge .br {
-      transition: stroke-dashoffset .6s, stroke .3s
-    }
-
-    .gauge text {
-      font-size: 30px;
-      font-weight: 800;
-      fill: var(--ink)
-    }
-
-    .row {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 9px 0;
-      border-bottom: 1px solid var(--line);
-      font-size: .88rem
-    }
-
-    .row:last-child {
-      border: 0
-    }
-
-    label {
-      display: block;
-      font-size: .8rem;
-      font-weight: 700;
-      margin: 10px 0 4px;
-      color: var(--muted)
-    }
-
-    input,
-    select {
-      width: 100%;
-      padding: 9px 12px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--bg)
-    }
-
-    input[type=checkbox] {
-      width: auto
-    }
-
-    .btn {
-      border: 0;
-      border-radius: 10px;
-      padding: 10px 16px;
-      font-weight: 800;
-      cursor: pointer;
-      background: var(--accent);
-      color: var(--accent-ink)
-    }
-
-    .btn.alt {
-      background: var(--bg);
-      color: var(--ink);
-      border: 1px solid var(--line)
-    }
-
-    .btn.bad {
-      background: var(--bad);
-      color: #fff
-    }
-
-    .btn.blue {
-      background: var(--hum);
-      color: #fff
-    }
-
-    .btns {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px
-    }
-
-    .scroll {
-      overflow-x: auto;
-      max-height: 420px
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .82rem;
-      min-width: 520px
-    }
-
-    th,
-    td {
-      padding: 9px;
-      text-align: left;
-      border-bottom: 1px solid var(--line)
-    }
-
-    th {
-      position: sticky;
-      top: 0;
-      background: var(--panel);
-      color: var(--muted)
-    }
-
-    .lh {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: .9rem
-    }
-
-    .ico {
-      display: grid;
-      place-items: center;
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: var(--bg);
-      font-size: 1.2rem
-    }
-
-    .big {
-      font-size: 2rem;
-      font-weight: 800;
-      line-height: 1.2;
-      margin: 8px 0 2px
-    }
-
-    .lcard {
-      border: 1px solid rgba(47, 158, 91, .35);
-      border-radius: 14px;
-      padding: 12px;
-      background: rgba(47, 158, 91, .08)
-    }
-
-    .lcard .top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: .72rem;
-      font-weight: 800;
-      color: var(--muted);
-      letter-spacing: .03em
-    }
-
-    .lcard .pct {
-      font-size: 1.7rem;
-      font-weight: 800;
-      color: var(--ok);
-      margin: 6px 0
-    }
-
-    .prog {
-      height: 6px;
-      border-radius: 99px;
-      background: var(--line);
-      overflow: hidden
-    }
-
-    .prog i {
-      display: block;
-      height: 100%;
-      background: var(--ok);
-      border-radius: 99px;
-      transition: width .5s
-    }
-
-    .lcard .vis {
-      font-size: .72rem;
-      color: var(--muted);
-      margin: 12px 0 5px
-    }
-
-    .vbox {
-      aspect-ratio: 16/9;
-      border-radius: 10px;
-      background: var(--bg);
-      border: 1px dashed var(--line);
-      display: grid;
-      place-items: center;
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-      color: var(--muted);
-      font-size: .82rem;
-      font-weight: 700;
-      text-align: center
-    }
-
-    .vbox:hover {
-      border-color: var(--ok);
-      color: var(--ok)
-    }
-
-    .vbox img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover
-    }
-
-    .vdel {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      z-index: 1;
-      border: 0;
-      border-radius: 8px;
-      background: rgba(0, 0, 0, .65);
-      color: #fff;
-      font-size: .72rem;
-      padding: 3px 9px;
-      cursor: pointer
-    }
-
-    .note {
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-size: .85rem;
-      line-height: 1.4
-    }
-
-    .note b {
-      display: block
-    }
-
-    .note.ok {
-      background: rgba(47, 158, 91, .12);
-      color: var(--ok)
-    }
-
-    .note.bad {
-      background: rgba(214, 69, 69, .12);
-      color: var(--bad)
-    }
-
-    #toasts {
-      position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 72px);
-      right: 18px;
-      z-index: 50;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: min(380px, calc(100vw - 36px))
-    }
-
-    .toast {
-      background: var(--panel);
-      color: var(--ink);
-      border: 1px solid var(--line);
-      border-left: 6px solid var(--ok);
-      border-radius: 12px;
-      padding: 12px 14px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      font-size: .88rem
-    }
-
-    .toast.bad {
-      border-left-color: var(--bad)
-    }
-
-    .toast .tx {
-      flex: 1
-    }
-
-    .toast b {
-      display: block
-    }
-
-    .toast button {
-      background: none;
-      border: 0;
-      cursor: pointer;
-      font-size: 1.1rem;
-      line-height: 1;
-      color: var(--muted)
-    }
-
-    .pm-state {
-      font-size: 1.7rem;
-      font-weight: 800;
-      line-height: 1.2;
-      margin: 8px 0 2px;
-      color: var(--ink)
-    }
-
-    .pm-state.on {
-      color: var(--ok)
-    }
-
-    .pm-state.off {
-      color: var(--muted)
-    }
-
-    .empty {
-      text-align: center;
-      color: var(--muted);
-      padding: 22px
-    }
-
-    .cam {
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      aspect-ratio: 4/3;
-      display: grid;
-      place-items: center;
-      color: #9ab;
-      font-size: .85rem;
-      text-align: center
-    }
-
-    .cam img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block
-    }
-
-    #p-kamera .kgrid.wide {
-      grid-template-columns: 1fr !important
-    }
-
-    .kgrid.wide .cam {
-      width: min(100%, calc(78vh*1.3333));
-      margin: 0 auto
-    }
-
-    .cam:fullscreen {
-      aspect-ratio: auto;
-      width: 100vw;
-      height: 100vh;
-      border-radius: 0
-    }
-
-    .cam {
-      cursor: zoom-in
-    }
-
-    .alert {
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      margin-bottom: 8px;
-      font-size: .85rem;
-      display: flex;
-      gap: 10px
-    }
-
-    .alert.warn {
-      border-color: var(--warn);
-      background: rgba(217, 138, 11, .1)
-    }
-
-    .alert.ok {
-      border-color: var(--ok);
-      background: rgba(47, 158, 91, .1)
-    }
-
-    .alert time {
-      margin-left: auto;
-      color: var(--muted);
-      white-space: nowrap
-    }
-
-    .steps {
-      margin: 0;
-      padding-left: 20px;
-      font-size: .88rem
-    }
-
-    .steps li {
-      margin-bottom: 6px
-    }
-
-    code {
-      background: var(--bg);
-      padding: 1px 6px;
-      border-radius: 6px;
-      font-size: .8rem
-    }
-
-    @media(max-width:900px) {
-      .side {
-        transform: translateX(-100%);
-        width: 260px
-      }
-
-      body.open .side {
-        transform: none
-      }
-
-      body.open .scrim {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, .5);
-        z-index: 25
-      }
-
-      body.mini {
-        --sw: 260px
-      }
-
-      body.mini .brand div,
-      body.mini .nav button .t,
-      body.mini .sfoot {
-        display: revert
-      }
-
-      .wrap,
-      body.mini .wrap {
-        margin-left: 0
-      }
-
-      .g4,
-      .g3,
-      .g2 {
-        grid-template-columns: 1fr 1fr
-      }
-
-      main {
-        padding: 14px
-      }
-
-      .bar {
-        padding: 10px 14px
-      }
-    }
-
-    @media(max-width:560px) {
-
-      .g4,
-      .g3,
-      .g2 {
-        grid-template-columns: 1fr
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Farming Selada - Kelompok 7</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#eaf0ec;--panel:#fff;--ink:#15261e;--muted:#5d6f66;--line:#d3ddd6;--side:#0e3b36;--side-ink:#cfe5dc;--accent:#8bd450;--accent-ink:#0e3b36;--ok:#2f9e5b;--warn:#d98a0b;--bad:#d64545;--temp:#e8890c;--hum:#2f7fd1;--soil:#2f9e5b;--pur:#7c5cd6;--grid:rgba(21,38,30,.08);--sw:260px;color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0c1714;--panel:#13241f;--ink:#e3efe9;--muted:#8fa69b;--line:#254036;--side:#081f1c;--side-ink:#a9c7ba;--grid:rgba(227,239,233,.09);color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0c1714;--panel:#13241f;--ink:#e3efe9;--muted:#8fa69b;--line:#254036;--side:#081f1c;--side-ink:#a9c7ba;--grid:rgba(227,239,233,.09);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+/* sidebar */
+.side{position:fixed;inset:0 auto 0 0;width:var(--sw);background:var(--side);color:var(--side-ink);padding:16px 12px;display:flex;flex-direction:column;gap:18px;z-index:30;transition:width .2s,transform .2s;overflow:hidden}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px;white-space:nowrap}
+.brand .lg{font-size:1.7rem}.brand b{color:#fff;display:block;line-height:1.2}.brand small{opacity:.75;font-size:.72rem}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav button{display:flex;align-items:center;gap:12px;background:none;border:0;padding:10px;border-radius:10px;color:var(--side-ink);cursor:pointer;font-weight:600;font-size:.9rem;white-space:nowrap;text-align:left;border-left:4px solid transparent}
+.nav button span.i{font-size:1.15rem;width:24px;text-align:center}
+.nav button:hover{background:rgba(255,255,255,.07)}
+.nav button.on{background:rgba(255,255,255,.1);color:#fff;border-left-color:var(--accent)}
+.nav .cnt{margin-left:auto;background:var(--bad);color:#fff;border-radius:99px;font-size:.7rem;padding:0 7px;display:none}
+.sfoot{margin-top:auto;font-size:.75rem;opacity:.8;padding:0 6px;white-space:nowrap}
+.wrap{margin-left:var(--sw);transition:margin .2s;min-height:100vh}
+body.mini{--sw:72px}
+body.mini .brand div,body.mini .nav button .t,body.mini .sfoot,body.mini .cnt{display:none}
+.scrim{display:none}
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line)}
+.burger{background:none;border:1px solid var(--line);border-radius:10px;width:42px;height:42px;cursor:pointer;display:grid;place-items:center}
+.burger svg{width:22px;height:22px;stroke:var(--ink)}
+.bar h1{margin:0;font-size:1.1rem;flex:1}
+.pill{display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;padding:5px 12px;border-radius:99px;background:var(--bg)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--warn)}.dot.ok{background:var(--ok)}.dot.err{background:var(--bad)}
+main{padding:24px;max-width:1250px}
+.page{display:none;gap:16px}.page.on{display:grid}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.panel h2{margin:0 0 4px;font-size:1.05rem}.panel h3{margin:0 0 10px;font-size:.95rem}
+.hint{color:var(--muted);font-size:.82rem;margin:0 0 12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.tile{border-top:5px solid var(--line)}.tile.t{border-top-color:var(--temp)}.tile.h{border-top-color:var(--hum)}.tile.s{border-top-color:var(--soil)}.tile.p{border-top-color:var(--pur)}
+.tile small{color:var(--muted);font-weight:600}.tile .n{font-size:2rem;font-weight:800;line-height:1.1;margin:6px 0}
+.badge{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.badge.ok{background:rgba(47,158,91,.15);color:var(--ok)}.badge.warn{background:rgba(217,138,11,.18);color:var(--warn)}.badge.bad{background:rgba(214,69,69,.15);color:var(--bad)}
+.chart{position:relative;height:290px}.chart.sm{height:220px}
+.gauge{text-align:center}.gauge svg{width:150px;height:150px}.gauge .tr{stroke:var(--line)}.gauge .br{transition:stroke-dashoffset .6s,stroke .3s}.gauge text{font-size:30px;font-weight:800;fill:var(--ink)}
+.row{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.88rem}.row:last-child{border:0}
+label{display:block;font-size:.8rem;font-weight:700;margin:10px 0 4px;color:var(--muted)}
+input,select{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+input[type=checkbox]{width:auto}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:800;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.alt{background:var(--bg);color:var(--ink);border:1px solid var(--line)}.btn.bad{background:var(--bad);color:#fff}.btn.blue{background:var(--hum);color:#fff}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.scroll{overflow-x:auto;max-height:420px}table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:520px}
+th,td{padding:9px;text-align:left;border-bottom:1px solid var(--line)}th{position:sticky;top:0;background:var(--panel);color:var(--muted)}
+.lh{display:flex;align-items:center;gap:10px;font-size:.9rem}.ico{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--bg);font-size:1.2rem}
+.big{font-size:2rem;font-weight:800;line-height:1.2;margin:8px 0 2px}
+.lcard{border:1px solid rgba(47,158,91,.35);border-radius:14px;padding:12px;background:rgba(47,158,91,.08)}
+.lcard .top{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;font-weight:800;color:var(--muted);letter-spacing:.03em}
+.lcard .pct{font-size:1.7rem;font-weight:800;color:var(--ok);margin:6px 0}
+.prog{height:6px;border-radius:99px;background:var(--line);overflow:hidden}.prog i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .5s}
+.lcard .vis{font-size:.72rem;color:var(--muted);margin:12px 0 5px}.vbox{aspect-ratio:16/9;border-radius:10px;background:var(--bg);border:1px dashed var(--line);display:grid;place-items:center;position:relative;overflow:hidden;cursor:pointer;color:var(--muted);font-size:.82rem;font-weight:700;text-align:center}
+.vbox:hover{border-color:var(--ok);color:var(--ok)}
+.vbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vdel{position:absolute;top:6px;right:6px;z-index:1;border:0;border-radius:8px;background:rgba(0,0,0,.65);color:#fff;font-size:.72rem;padding:3px 9px;cursor:pointer}
+.note{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:.85rem;line-height:1.4}.note b{display:block}
+.note.ok{background:rgba(47,158,91,.12);color:var(--ok)}.note.bad{background:rgba(214,69,69,.12);color:var(--bad)}
+#toasts{position:fixed;top:calc(env(safe-area-inset-top,0px) + 72px);right:18px;z-index:50;display:flex;flex-direction:column;gap:10px;width:min(380px,calc(100vw - 36px))}
+.toast{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-left:6px solid var(--ok);border-radius:12px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;gap:10px;align-items:flex-start;font-size:.88rem}
+.toast.bad{border-left-color:var(--bad)}.toast .tx{flex:1}.toast b{display:block}.toast button{background:none;border:0;cursor:pointer;font-size:1.1rem;line-height:1;color:var(--muted)}
+.pm-state{font-size:1.7rem;font-weight:800;line-height:1.2;margin:8px 0 2px;color:var(--ink)}.pm-state.on{color:var(--ok)}.pm-state.off{color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:22px}
+.cam{background:#000;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center;color:#9ab;font-size:.85rem;text-align:center}
+.cam img{width:100%;height:100%;object-fit:contain;display:block}
+#p-kamera .kgrid.wide{grid-template-columns:1fr!important}
+.kgrid.wide .cam{width:min(100%,calc(78vh*1.3333));margin:0 auto}
+.cam:fullscreen{aspect-ratio:auto;width:100vw;height:100vh;border-radius:0}
+.cam{cursor:zoom-in}
+.alert{padding:10px 12px;border-radius:10px;border:1px solid var(--line);margin-bottom:8px;font-size:.85rem;display:flex;gap:10px}
+.alert.warn{border-color:var(--warn);background:rgba(217,138,11,.1)}.alert.ok{border-color:var(--ok);background:rgba(47,158,91,.1)}
+.alert time{margin-left:auto;color:var(--muted);white-space:nowrap}
+.steps{margin:0;padding-left:20px;font-size:.88rem}.steps li{margin-bottom:6px}
+code{background:var(--bg);padding:1px 6px;border-radius:6px;font-size:.8rem}
+@media(max-width:900px){
+ .side{transform:translateX(-100%);width:260px}body.open .side{transform:none}
+ body.open .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25}
+ body.mini{--sw:260px}body.mini .brand div,body.mini .nav button .t,body.mini .sfoot{display:revert}
+ .wrap,body.mini .wrap{margin-left:0}
+ .g4,.g3,.g2{grid-template-columns:1fr 1fr}main{padding:14px}.bar{padding:10px 14px}
+}
+@media(max-width:560px){.g4,.g3,.g2{grid-template-columns:1fr}}
+</style>
 </head>
-
 <body>
-  <aside class="side" id="side">
-    <div class="brand"><span class="lg">🥬</span>
-      <div><b>Smart Farming</b><small>Selada Keriting · Kelompok 7</small></div>
-    </div>
-    <nav class="nav" id="nav">
-      <button data-p="ringkasan" class="on"><span class="i">🖥️</span><span class="t">Monitoring</span></button>
-      <button data-p="grafik"><span class="i">📈</span><span class="t">Grafik sensor</span></button>
-      <button data-p="kamera"><span class="i">📷</span><span class="t">Kamera ESP32-CAM</span></button>
-      <button data-p="pompa"><span class="i">🧠</span><span class="t">CNN</span></button>
-      <button data-p="prediksi"><span class="i">⏱️</span><span class="t">LSTM</span></button>
-    </nav>
-    <div class="sfoot">Firebase Realtime DB<br>ESP32 + DHT22 + Soil + Relay</div>
-  </aside>
-  <div class="scrim" id="scrim"></div>
+<aside class="side" id="side">
+  <div class="brand"><span class="lg">🥬</span><div><b>Smart Farming</b><small>Selada Keriting · Kelompok 7</small></div></div>
+  <nav class="nav" id="nav">
+    <button data-p="ringkasan" class="on"><span class="i">🖥️</span><span class="t">Monitoring</span></button>
+    <button data-p="grafik"><span class="i">📈</span><span class="t">Grafik sensor</span></button>
+    <button data-p="kamera"><span class="i">📷</span><span class="t">Kamera ESP32-CAM</span></button>
+    <button data-p="pompa"><span class="i">🧠</span><span class="t">CNN</span></button>
+    <button data-p="prediksi"><span class="i">⏱️</span><span class="t">LSTM</span></button>
+  </nav>
+  <div class="sfoot">Firebase Realtime DB<br>ESP32 + DHT22 + Soil + Relay</div>
+</aside>
+<div class="scrim" id="scrim"></div>
 
-  <div class="wrap">
-    <header class="bar">
-      <button class="burger" id="burger" aria-label="Buka atau tutup menu"><svg viewBox="0 0 24 24" fill="none"
-          stroke-width="2.2" stroke-linecap="round">
-          <path d="M3 6h18M3 12h18M3 18h18" />
-        </svg></button>
-      <h1 id="title">Monitoring</h1>
-      <div class="pill" title="Status koneksi Firebase"><span class="dot" id="fbDot"></span><span id="fbTxt">Menunggu
-          data</span></div>
-      <div class="pill" id="clock">--:--:--</div>
-    </header>
-    <main>
+<div class="wrap">
+<header class="bar">
+  <button class="burger" id="burger" aria-label="Buka atau tutup menu"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <h1 id="title">Monitoring</h1>
+  <div class="pill" title="Status koneksi Firebase"><span class="dot" id="fbDot"></span><span id="fbTxt">Menunggu data</span></div>
+  <div class="pill" id="clock">--:--:--</div>
+</header>
+<main>
 
-      <!-- RINGKASAN -->
-      <section class="page on" id="p-ringkasan">
-        <div class="g4">
-          <div class="panel tile t"><small>Suhu udara (DHT22)</small>
-            <div class="n" id="vT">-- °C</div><span class="badge" id="bT">Menunggu</span>
-          </div>
-          <div class="panel tile h"><small>Kelembapan udara</small>
-            <div class="n" id="vH">-- %</div><span class="badge" id="bH">Menunggu</span>
-          </div>
-          <div class="panel tile s"><small>Kelembapan tanah</small>
-            <div class="n" id="vS">-- %</div><span class="badge" id="bS">Menunggu</span>
-          </div>
-          <div class="panel tile p"><small>Pompa air (relay)</small>
-            <div class="n" id="vP">--</div><span class="badge" id="bP">Menunggu</span>
-          </div>
-        </div>
-        <div class="g2" style="grid-template-columns:240px 1fr">
-          <div class="panel gauge">
-            <svg viewBox="0 0 120 120">
-              <circle class="tr" cx="60" cy="60" r="50" fill="none" stroke-width="10" />
-              <circle id="gBar" class="br" cx="60" cy="60" r="50" fill="none" stroke-width="10" stroke-linecap="round"
-                stroke-dasharray="314" stroke-dashoffset="314" stroke="#888" transform="rotate(-90 60 60)" /><text
-                id="gTxt" x="60" y="68" text-anchor="middle">--</text>
-            </svg>
-            <div class="hint" style="margin:6px 0 0">Indeks kesehatan tanaman<br><b id="gLbl">Standby</b></div>
-          </div>
-          <div class="panel" style="display:flex;flex-direction:column;justify-content:center;gap:14px">
-            <div>
-              <h2 style="margin:0">Grafik real-time sejak awal</h2>
-              <div class="hint" style="margin:4px 0 0" id="mInfo">Menunggu data pertama.</div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="badge" id="mLive">Menunggu
-                data</span>
-              <select id="mRange" style="width:auto" aria-label="Rentang data">
-                <option value="all">Sejak awal</option>
-                <option value="100">100 titik terakhir</option>
-              </select>
-              <button class="btn alt" id="mPause" type="button">Jeda</button>
-            </div>
-          </div>
-        </div>
-        <div class="g2">
-          <div class="panel">
-            <div class="row" style="border:0;padding:0 0 8px;align-items:center">
-              <h3 style="margin:0">Suhu udara (°C)</h3><b id="mvT">--</b>
-            </div>
-            <div class="chart sm"><canvas id="cMSuhu"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="row" style="border:0;padding:0 0 8px;align-items:center">
-              <h3 style="margin:0">Kelembapan udara (%)</h3><b id="mvH">--</b>
-            </div>
-            <div class="chart sm"><canvas id="cMHum"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="row" style="border:0;padding:0 0 8px;align-items:center">
-              <h3 style="margin:0">Kelembapan tanah (%)</h3><b id="mvS">--</b>
-            </div>
-            <div class="chart sm"><canvas id="cMSoil"></canvas></div>
-          </div>
-          <div class="panel">
-            <div class="row" style="border:0;padding:0 0 8px;align-items:center">
-              <h3 style="margin:0">Tingkat kematangan (%)</h3><b id="mvM">--</b>
-            </div>
-            <div class="chart sm"><canvas id="cMMat"></canvas></div>
-          </div>
-        </div>
-        <div class="g3">
-          <div class="panel">
-            <h3>Statistik sesi (suhu)</h3>
-            <div id="stT"></div>
-          </div>
-          <div class="panel">
-            <h3>Statistik sesi (kelembapan udara)</h3>
-            <div id="stH"></div>
-          </div>
-          <div class="panel">
-            <h3>Statistik sesi (kelembapan tanah)</h3>
-            <div id="stS"></div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="row" style="border:0;align-items:center;flex-wrap:wrap">
-            <h2>Riwayat data</h2>
-            <div class="btns" style="margin:0"><button class="btn alt" id="btnReload">Muat riwayat dari
-                Firebase</button><button class="btn" id="btnCsv">Unduh CSV</button><button class="btn bad"
-                id="btnClear">Hapus tampilan</button></div>
-          </div>
-          <div class="scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Waktu</th>
-                  <th>Suhu</th>
-                  <th>Kelembapan udara</th>
-                  <th>Kelembapan tanah</th>
-                  <th>Status tanah</th>
-                  <th>Pompa</th>
-                </tr>
-              </thead>
-              <tbody id="tb"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- GRAFIK -->
-      <section class="page" id="p-grafik">
-        <div class="panel">
-          <div class="row" style="border:0;align-items:center">
-            <h2>Semua sensor</h2>
-            <select id="range" style="width:auto">
-              <option value="20">20 titik terakhir</option>
-              <option value="60" selected>60 titik terakhir</option>
-              <option value="200">200 titik terakhir</option>
-            </select>
-          </div>
-          <div class="chart"><canvas id="cAll"></canvas></div>
-        </div>
-        <div class="g2">
-          <div class="panel">
-            <h3>Suhu & kelembapan udara</h3>
-            <div class="chart sm"><canvas id="cDht"></canvas></div>
-          </div>
-          <div class="panel">
-            <h3>Kelembapan tanah dan batas pompa</h3>
-            <div class="chart sm"><canvas id="cSoil"></canvas></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- KAMERA -->
-      <section class="page" id="p-kamera">
-        <div class="g2 kgrid" style="grid-template-columns:2fr 1fr">
-          <div class="panel">
-            <h2>Live view</h2>
-            <p class="hint">Stream berjalan di port 81 agar port 80 tetap bebas untuk tombol kontrol.</p>
-            <div class="cam" id="cam">Tekan Mulai stream untuk menampilkan kamera.</div>
-            <div class="btns"><button class="btn" id="camOn">Mulai stream</button><button class="btn alt"
-                id="camOff">Hentikan</button><button class="btn blue" id="camShot">Ambil foto</button><button
-                class="btn alt" id="camBig">Perbesar</button><button class="btn alt" id="camFull">Layar penuh</button>
-            </div>
-          </div>
-          <div class="panel">
-            <h2>Kontrol kamera</h2>
-            <div class="row"><span>IP kamera</span><b id="camIpTxt">-</b></div>
-            <div class="row"><span>Alamat stream</span><code id="camUrl">-</code></div>
-            <div class="btns"><button class="btn" id="camFlash">Nyalakan / matikan flash</button><button class="btn alt"
-                id="camPortal">Buka portal kamera</button><button class="btn bad" id="camReset">Ganti jaringan
-                WiFi</button></div>
-            <p class="hint" style="margin-top:12px" id="camMsg">Flash adalah tombol toggle: setiap tekan membalik status
-              lampu.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- POMPA -->
-      <section class="page" id="p-pompa">
-        <div class="panel">
-          <h2>Prediksi CNN berdasarkan foto daun</h2>
-          <p class="hint">Unggah foto daun selada. Lebar daun diukur dari foto, lalu grafik batang menampilkan peluang
-            tiap fase pertumbuhan.</p>
-          <div class="g2" style="grid-template-columns:1fr 2fr">
-            <div>
-              <label for="cFile">Foto daun selada</label><input id="cFile" type="file" accept="image/*">
-              <canvas id="cPrev"
-                style="display:none;width:100%;height:auto;border-radius:12px;margin-top:10px;background:#000"
-                aria-label="Pratinjau deteksi daun"></canvas>
-              <div class="note" id="cnnNote" hidden role="status"></div>
-              <div class="btns"><button class="btn alt" id="cnnRemote">Kirim foto ke model CNN</button><button
-                  class="btn bad" id="cnnDel" type="button" hidden>Hapus foto</button></div>
-              <div style="margin-top:14px">
-                <div class="row"><span>Lebar daun terdeteksi</span><b id="cnnW">-</b></div>
-                <div class="row"><span>Fase prediksi</span><b id="cnnCls">-</b></div>
-                <div class="row"><span>Keyakinan</span><b id="cnnConf">-</b></div>
-                <div class="row"><span>Sumber</span><b id="cnnSrc">-</b></div>
-              </div>
-              <p class="hint" style="margin-top:10px" id="cnnMsg">Tanpa model, lebar daun diperkirakan dari area hijau
-                pada foto (bukan inferensi CNN sungguhan). Isi nilai cnn pada bagian KONFIGURASI di kode agar foto
-                dikirim ke modelmu.</p>
-            </div>
-            <div class="chart sm"><canvas id="cCnn"></canvas></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- PREDIKSI -->
-      <section class="page" id="p-prediksi">
-        <div class="g3">
-          <div class="panel">
-            <div class="lh"><span class="ico">💧</span><b>Kelembapan Tanah</b></div>
-            <div class="big" id="lSoil">-- %</div>
-            <div class="hint" style="margin:0" id="lSoilT">Menunggu data</div>
-          </div>
-          <div class="panel">
-            <div class="lh"><span class="ico">🌡️</span><b>Suhu Udara</b></div>
-            <div class="big" id="lTemp">-- °C</div>
-            <div class="hint" style="margin:0" id="lTempT">Menunggu data</div>
-          </div>
-          <div class="panel" id="pmCard">
-            <h3>Status Pompa Air</h3>
-            <div class="pm-state" id="pmState">--</div>
-            <div class="hint" style="margin:0" id="pmSub">Menunggu data</div>
-          </div>
-        </div>
-        <div class="panel">
-          <div
-            style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-            <div style="display:flex;gap:12px;align-items:center"><span class="ico">🔮</span>
-              <div>
-                <h2 style="margin:0">Prediksi Pertumbuhan 4 Hari ke Depan</h2>
-                <p class="hint" style="margin:2px 0 0" id="lSub">-</p>
-              </div>
-            </div>
-            <button class="btn alt" id="lReload">↻ Muat Ulang</button>
-          </div>
-          <div class="g4" id="lCards"></div>
-          <input type="file" id="lFile" accept="image/*" hidden>
-        </div>
-        <div class="panel">
-          <h2>Grafik LSTM longitudinal</h2>
-          <p class="hint" id="lgHint">Pantauan tiap hari sejak hari pertama. Garis putus-putus adalah prediksi 4 hari ke
-            depan.</p>
-          <div class="g2">
-            <div>
-              <h3>Suhu udara (°C)</h3>
-              <div class="chart sm"><canvas id="cLSuhu"></canvas></div>
-            </div>
-            <div>
-              <h3>Kelembapan udara (%)</h3>
-              <div class="chart sm"><canvas id="cLHum"></canvas></div>
-            </div>
-            <div>
-              <h3>Kelembapan tanah (%)</h3>
-              <div class="chart sm"><canvas id="cLSoil"></canvas></div>
-            </div>
-            <div>
-              <h3>Tingkat kematangan (%)</h3>
-              <div class="chart sm"><canvas id="cLMat"></canvas></div>
-            </div>
-          </div>
-        </div>
-        <div class="panel">
-          <h2>Riwayat Monitoring Terbaru</h2>
-          <div class="scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Waktu</th>
-                  <th>Kelembapan Tanah</th>
-                  <th>Suhu Udara</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="tbLstm"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-
-    </main>
+<!-- RINGKASAN -->
+<section class="page on" id="p-ringkasan">
+  <div class="g4">
+    <div class="panel tile t"><small>Suhu udara (DHT22)</small><div class="n" id="vT">-- °C</div><span class="badge" id="bT">Menunggu</span></div>
+    <div class="panel tile h"><small>Kelembapan udara</small><div class="n" id="vH">-- %</div><span class="badge" id="bH">Menunggu</span></div>
+    <div class="panel tile s"><small>Kelembapan tanah</small><div class="n" id="vS">-- %</div><span class="badge" id="bS">Menunggu</span></div>
+    <div class="panel tile p"><small>Pompa air (relay)</small><div class="n" id="vP">--</div><span class="badge" id="bP">Menunggu</span></div>
   </div>
+  <div class="g2" style="grid-template-columns:240px 1fr">
+    <div class="panel gauge">
+      <svg viewBox="0 0 120 120"><circle class="tr" cx="60" cy="60" r="50" fill="none" stroke-width="10"/><circle id="gBar" class="br" cx="60" cy="60" r="50" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314" stroke="#888" transform="rotate(-90 60 60)"/><text id="gTxt" x="60" y="68" text-anchor="middle">--</text></svg>
+      <div class="hint" style="margin:6px 0 0">Indeks kesehatan tanaman<br><b id="gLbl">Standby</b></div>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;justify-content:center;gap:14px">
+      <div><h2 style="margin:0">Grafik real-time sejak awal</h2><div class="hint" style="margin:4px 0 0" id="mInfo">Menunggu data pertama.</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="badge" id="mLive">Menunggu data</span>
+        <select id="mRange" style="width:auto" aria-label="Rentang data"><option value="all">Sejak awal</option><option value="100">100 titik terakhir</option></select>
+        <button class="btn alt" id="mPause" type="button">Jeda</button></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="panel"><div class="row" style="border:0;padding:0 0 8px;align-items:center"><h3 style="margin:0">Suhu udara (°C)</h3><b id="mvT">--</b></div><div class="chart sm"><canvas id="cMSuhu"></canvas></div></div>
+    <div class="panel"><div class="row" style="border:0;padding:0 0 8px;align-items:center"><h3 style="margin:0">Kelembapan udara (%)</h3><b id="mvH">--</b></div><div class="chart sm"><canvas id="cMHum"></canvas></div></div>
+    <div class="panel"><div class="row" style="border:0;padding:0 0 8px;align-items:center"><h3 style="margin:0">Kelembapan tanah (%)</h3><b id="mvS">--</b></div><div class="chart sm"><canvas id="cMSoil"></canvas></div></div>
+    <div class="panel"><div class="row" style="border:0;padding:0 0 8px;align-items:center"><h3 style="margin:0">Tingkat kematangan (%)</h3><b id="mvM">--</b></div><div class="chart sm"><canvas id="cMMat"></canvas></div></div>
+  </div>
+  <div class="g3">
+    <div class="panel"><h3>Statistik sesi (suhu)</h3><div id="stT"></div></div>
+    <div class="panel"><h3>Statistik sesi (kelembapan udara)</h3><div id="stH"></div></div>
+    <div class="panel"><h3>Statistik sesi (kelembapan tanah)</h3><div id="stS"></div></div>
+  </div>
+  <div class="panel">
+    <div class="row" style="border:0;align-items:center;flex-wrap:wrap"><h2>Riwayat data</h2>
+      <div class="btns" style="margin:0"><button class="btn alt" id="btnReload">Muat riwayat dari Firebase</button><button class="btn" id="btnCsv">Unduh CSV</button><button class="btn bad" id="btnClear">Hapus tampilan</button></div></div>
+    <div class="scroll"><table><thead><tr><th>Waktu</th><th>Suhu</th><th>Kelembapan udara</th><th>Kelembapan tanah</th><th>Status tanah</th><th>Pompa</th></tr></thead><tbody id="tb"></tbody></table></div>
+  </div>
+</section>
 
-  <div id="toasts" role="status" aria-live="polite"></div>
-  <script>
-    const $ = id => document.getElementById(id), css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-    /* KONFIGURASI: ubah nilai di sini (url Firebase, ip kamera, url model CNN, lebar bidang foto, mulai = tanggal hari pertama data (YYYY-MM-DD, kosong = otomatis dari data pertama), hp = hari pertama yang diprediksi (kartu LSTM menampilkan hp sampai hp+3), panen = hari panen, lstm = url model LSTM) */
-    const DEF = { url: 'https://smart-farming-selada-default-rtdb.asia-southeast1.firebasedatabase.app/kelompok2.json', poll: 2000, cnn: '', fov: 20, mulai: '', hp: 43, panen: 45, lstm: '', demo: false, theme: 'auto', cam: '10.96.92.235', cp: 80, sp: 81, tmin: 20, tmax: 28, hmin: 60, hmax: 80, smin: 60, smax: 80 };
-    let S = { ...DEF }; try { S = { ...DEF, ...JSON.parse(localStorage.getItem('selada') || '{}') } } catch (e) { }
-    let rows = [], seen = new Set(), alerts = [], lastState = '', unread = 0, timer = null, demoT = 26, demoS = 70, charts = {};
-    const TITLES = { ringkasan: 'Monitoring', grafik: 'Grafik sensor', kamera: 'Kamera ESP32-CAM', pompa: 'CNN', prediksi: 'LSTM' };
+<!-- GRAFIK -->
+<section class="page" id="p-grafik">
+  <div class="panel">
+    <div class="row" style="border:0;align-items:center"><h2>Semua sensor</h2>
+      <select id="range" style="width:auto"><option value="20">20 titik terakhir</option><option value="60" selected>60 titik terakhir</option><option value="200">200 titik terakhir</option></select></div>
+    <div class="chart"><canvas id="cAll"></canvas></div>
+  </div>
+  <div class="g2">
+    <div class="panel"><h3>Suhu & kelembapan udara</h3><div class="chart sm"><canvas id="cDht"></canvas></div></div>
+    <div class="panel"><h3>Kelembapan tanah dan batas pompa</h3><div class="chart sm"><canvas id="cSoil"></canvas></div></div>
+  </div>
+</section>
 
-    /* navigasi + hamburger */
-    function go(p) {
-      document.querySelectorAll('.page').forEach(e => e.classList.toggle('on', e.id === 'p-' + p));
-      document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.p === p));
-      $('title').textContent = TITLES[p]; document.body.classList.remove('open');
-      setTimeout(() => Object.values(charts).forEach(c => c.resize()), 60)
-    }
-    document.querySelectorAll('#nav button').forEach(b => b.onclick = () => go(b.dataset.p));
-    $('burger').onclick = () => { innerWidth <= 900 ? document.body.classList.toggle('open') : document.body.classList.toggle('mini'); setTimeout(() => Object.values(charts).forEach(c => c.resize()), 250) };
-    $('scrim').onclick = () => document.body.classList.remove('open');
-    setInterval(() => { $('clock').textContent = new Date().toLocaleTimeString('id-ID'); liveState() }, 1000);
+<!-- KAMERA -->
+<section class="page" id="p-kamera">
+  <div class="g2 kgrid" style="grid-template-columns:2fr 1fr">
+    <div class="panel"><h2>Live view</h2><p class="hint">Stream berjalan di port 81 agar port 80 tetap bebas untuk tombol kontrol.</p>
+      <div class="cam" id="cam">Tekan Mulai stream untuk menampilkan kamera.</div>
+      <div class="btns"><button class="btn" id="camOn">Mulai stream</button><button class="btn alt" id="camOff">Hentikan</button><button class="btn blue" id="camShot">Ambil foto</button><button class="btn alt" id="camBig">Perbesar</button><button class="btn alt" id="camFull">Layar penuh</button></div>
+    </div>
+    <div class="panel"><h2>Kontrol kamera</h2>
+      <div class="row"><span>IP kamera</span><b id="camIpTxt">-</b></div>
+      <div class="row"><span>Alamat stream</span><code id="camUrl">-</code></div>
+      <label for="camIpIn">Sambungkan ke IP baru</label>
+      <div style="display:flex;gap:8px">
+        <input id="camIpIn" style="flex:1;min-width:0" inputmode="decimal" placeholder="contoh: 192.168.1.50" autocomplete="off" spellcheck="false">
+        <button class="btn" id="camIpSave" type="button">Sambungkan</button>
+      </div>
+      <div class="btns" style="margin-top:8px"><button class="btn alt" id="camIpDef" type="button">Kembalikan default</button></div>
+      <div class="btns"><button class="btn" id="camFlash">Nyalakan / matikan flash</button><button class="btn alt" id="camPortal">Buka portal kamera</button><button class="btn bad" id="camReset">Ganti jaringan WiFi</button></div>
+      <p class="hint" style="margin-top:12px" id="camMsg">Flash adalah tombol toggle: setiap tekan membalik status lampu.</p>
+    </div>
+  </div>
+</section>
 
-    /* tema */
-    function theme() {
-      const r = document.documentElement; S.theme === 'auto' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', S.theme);
-      if (charts.all) { Chart.defaults.color = css('--muted'); Chart.defaults.borderColor = css('--grid'); Object.values(charts).forEach(c => c.update()) }
-    }
+<!-- POMPA -->
+<section class="page" id="p-pompa">
+  <div class="panel"><h2>Prediksi CNN berdasarkan foto daun</h2>
+    <p class="hint">Unggah foto daun selada. Lebar daun diukur dari foto, lalu grafik batang menampilkan peluang tiap fase pertumbuhan.</p>
+    <div class="g2" style="grid-template-columns:1fr 2fr">
+      <div>
+        <label for="cFile">Foto daun selada</label><input id="cFile" type="file" accept="image/*">
+        <canvas id="cPrev" style="display:none;width:100%;height:auto;border-radius:12px;margin-top:10px;background:#000" aria-label="Pratinjau deteksi daun"></canvas>
+        <div class="note" id="cnnNote" hidden role="status"></div>
+        <div class="btns"><button class="btn alt" id="cnnRemote">Kirim foto ke model CNN</button><button class="btn bad" id="cnnDel" type="button" hidden>Hapus foto</button></div>
+        <div style="margin-top:14px"><div class="row"><span>Lebar daun terdeteksi</span><b id="cnnW">-</b></div><div class="row"><span>Fase prediksi</span><b id="cnnCls">-</b></div><div class="row"><span>Keyakinan</span><b id="cnnConf">-</b></div><div class="row"><span>Sumber</span><b id="cnnSrc">-</b></div></div>
+        <p class="hint" style="margin-top:10px" id="cnnMsg">Tanpa model, lebar daun diperkirakan dari area hijau pada foto (bukan inferensi CNN sungguhan). Isi nilai cnn pada bagian KONFIGURASI di kode agar foto dikirim ke modelmu.</p>
+      </div>
+      <div class="chart sm"><canvas id="cCnn"></canvas></div>
+    </div>
+  </div>
+</section>
 
-    /* push-ID Firebase -> waktu */
-    const PC = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
-    function pushTime(k) { if (!k || k.length < 8) return null; let t = 0; for (let i = 0; i < 8; i++) { const x = PC.indexOf(k[i]); if (x < 0) return null; t = t * 64 + x } return t > 1.4e12 && t < 4e12 ? t : null }
+<!-- PREDIKSI -->
+<section class="page" id="p-prediksi">
+  <div class="g3">
+    <div class="panel"><div class="lh"><span class="ico">💧</span><b>Kelembapan Tanah</b></div><div class="big" id="lSoil">-- %</div><div class="hint" style="margin:0" id="lSoilT">Menunggu data</div></div>
+    <div class="panel"><div class="lh"><span class="ico">🌡️</span><b>Suhu Udara</b></div><div class="big" id="lTemp">-- °C</div><div class="hint" style="margin:0" id="lTempT">Menunggu data</div></div>
+    <div class="panel" id="pmCard"><h3>Status Pompa Air</h3><div class="pm-state" id="pmState">--</div><div class="hint" style="margin:0" id="pmSub">Menunggu data</div></div>
+  </div>
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;gap:12px;align-items:center"><span class="ico">🔮</span><div><h2 style="margin:0">Prediksi Pertumbuhan 4 Hari ke Depan</h2><p class="hint" style="margin:2px 0 0" id="lSub">-</p></div></div>
+      <button class="btn alt" id="lReload">↻ Muat Ulang</button></div>
+    <div class="g4" id="lCards"></div>
+    <input type="file" id="lFile" accept="image/*" hidden>
+  </div>
+  <div class="panel"><h2>Grafik LSTM longitudinal</h2>
+    <p class="hint" id="lgHint">Pantauan tiap hari sejak hari pertama. Garis putus-putus adalah prediksi 4 hari ke depan.</p>
+    <div class="g2">
+      <div><h3>Suhu udara (°C)</h3><div class="chart sm"><canvas id="cLSuhu"></canvas></div></div>
+      <div><h3>Kelembapan udara (%)</h3><div class="chart sm"><canvas id="cLHum"></canvas></div></div>
+      <div><h3>Kelembapan tanah (%)</h3><div class="chart sm"><canvas id="cLSoil"></canvas></div></div>
+      <div><h3>Tingkat kematangan (%)</h3><div class="chart sm"><canvas id="cLMat"></canvas></div></div>
+    </div>
+  </div>
+  <div class="panel"><h2>Riwayat Monitoring Terbaru</h2>
+    <div class="scroll"><table><thead><tr><th>Waktu</th><th>Kelembapan Tanah</th><th>Suhu Udara</th><th>Status</th></tr></thead><tbody id="tbLstm"></tbody></table></div></div>
+</section>
 
-    /* ambil data */
-    async function fetchFb(limit) {
-      const u = S.url + (S.url.includes('?') ? '&' : '?') + 'orderBy=%22$key%22&limitToLast=' + limit;
-      const r = await fetch(u); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json()
-    }
-    function ingest(obj) {
-      if (!obj) return 0; let list = [];
-      if (obj.suhu !== undefined) { list = [['single:' + JSON.stringify(obj), obj]] }
-      else list = Object.entries(obj).filter(([k, v]) => v && typeof v === 'object' && v.suhu !== undefined);
-      list.sort((a, b) => a[0] < b[0] ? -1 : 1); let n = 0;
-      for (const [k, v] of list) {
-        if (seen.has(k)) continue; seen.add(k);
-        addRow({ t: pushTime(k) || Date.now(), temp: +v.suhu, hum: +v.kelembapan_udara, soil: +v.kelembapan_tanah, status: v.status || '-' }); n++
-      }
-      return n
-    }
-    function addRow(r) {
-      r.pump = r.soil < S.smin; rows.push(r); if (rows.length > 20000) rows.shift();
-      if (!S.mulai && !startT) { startT = dayStr(r.t); try { localStorage.setItem('seladaMulai', startT) } catch (e) { } }
-    }
-    async function loadAll() {
-      rows = []; seen = new Set();
-      if (S.demo) { for (let i = 0; i < 30; i++)demoTick(Date.now() - (30 - i) * S.poll); return refresh() }
-      try { ingest(await fetchFb(60)); fbState('ok'); refresh() } catch (e) { fbState('err', e.message) }
-    }
-    let ready = false;
-    function markSeen(o) { if (!o) return; if (o.suhu !== undefined) seen.add('single:' + JSON.stringify(o)); else Object.keys(o).forEach(k => seen.add(k)) }
-    /* Saat halaman dibuka: data lama di Firebase ditandai sudah dilihat dan TIDAK ditampilkan. */
-    async function baseline() { try { markSeen(await fetchFb(60)); ready = true; fbState('ok', 'Terhubung, menunggu data baru') } catch (e) { fbState('err', e.message) } }
-    async function poll() {
-      if (S.demo) { demoTick(Date.now()); fbState('ok', 'Mode demo'); return refresh() }
-      if (!ready) { await baseline(); return }
-      try { const n = ingest(await fetchFb(5)); fbState('ok', rows.length ? undefined : 'Terhubung, menunggu data baru'); if (n) { lastRecv = Date.now(); refresh() } } catch (e) { fbState('err', e.message) }
-    }
-    function demoTick(t) {
-      demoT += (Math.random() - .48) * .5; demoT = Math.min(33, Math.max(19, demoT));
-      demoS += (demoS < S.smin ? 4 : -(Math.random() * 1.6)); demoS = Math.min(95, Math.max(30, demoS));
-      const h = 62 + (Math.random() - .5) * 10, st = demoS < S.smin ? 'Kering' : demoS > S.smax ? 'Basah' : 'Normal';
-      addRow({ t, temp: +demoT.toFixed(1), hum: +h.toFixed(0), soil: Math.round(demoS), status: st })
-    }
-    function fbState(s, m) { $('fbDot').className = 'dot ' + (s === 'ok' ? 'ok' : 'err'); $('fbTxt').textContent = s === 'ok' ? (m || 'Terhubung ke Firebase') : 'Gagal: ' + m }
-    function restart() { clearInterval(timer); timer = setInterval(poll, Math.max(1000, S.poll)) }
 
-    /* statistik & regresi */
-    const col = k => rows.map(r => r[k]);
-    function stats(a) { if (!a.length) return null; return { min: Math.min(...a), max: Math.max(...a), avg: a.reduce((x, y) => x + y, 0) / a.length } }
-    const bdg = (id, ok, a, b) => { const e = $(id); e.textContent = ok ? a : b; e.className = 'badge ' + (ok ? 'ok' : 'warn') };
-    const miss = (v, a, b) => v < a ? a - v : v > b ? v - b : 0;
+</main></div>
 
-    /* grafik */
-    const L = () => rows.map(r => new Date(r.t).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-    function ds(l, d, c, f) { return { label: l, data: d, borderColor: c, backgroundColor: c + '22', tension: .35, fill: !!f, pointRadius: 2 } }
-    function setup() {
-      Chart.defaults.color = css('--muted'); Chart.defaults.borderColor = css('--grid'); Chart.defaults.font.family = 'system-ui,sans-serif';
-      const o = { responsive: true, maintainAspectRatio: false, animation: false }; const T = css('--temp'), H = css('--hum'), So = css('--soil');
-      const one = (id, label, color, ax) => new Chart($(id), { type: 'line', data: { labels: [], datasets: [ds(label, [], color, 1)] }, options: { ...o, plugins: { legend: { display: false } }, scales: { y: ax } } });
-      charts.mSuhu = one('cMSuhu', 'Suhu (°C)', T, { suggestedMin: 15, suggestedMax: 35 });
-      charts.mHum = one('cMHum', 'Kelembapan udara (%)', H, { min: 0, max: 100 });
-      charts.mSoil = one('cMSoil', 'Kelembapan tanah (%)', So, { min: 0, max: 100 });
-      charts.mMat = one('cMMat', 'Tingkat kematangan (%)', css('--pur'), { beginAtZero: true, suggestedMax: 10 });
-      const lone = (id, label, color, ax) => new Chart($(id), { type: 'line', data: { labels: [], datasets: [{ ...ds(label, [], color, 1), spanGaps: true }, { ...ds('Prediksi', [], color), borderDash: [6, 5], pointRadius: 4, pointStyle: 'triangle', spanGaps: true }] }, options: { ...o, plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: ax } } });
-      charts.lSuhu = lone('cLSuhu', 'Rata-rata harian (°C)', T, { suggestedMin: 15, suggestedMax: 35 });
-      charts.lHum = lone('cLHum', 'Rata-rata harian (%)', H, { min: 0, max: 100 });
-      charts.lSoil = lone('cLSoil', 'Rata-rata harian (%)', So, { min: 0, max: 100 });
-      charts.lMat = lone('cLMat', 'Kematangan (%)', css('--pur'), { beginAtZero: true, suggestedMax: 10 });
-      charts.all = new Chart($('cAll'), { type: 'line', data: { labels: [], datasets: [ds('Suhu (°C)', [], T, 1), ds('Kelembapan udara (%)', [], H, 1), ds('Kelembapan tanah (%)', [], So, 1)] }, options: o });
-      charts.dht = new Chart($('cDht'), { type: 'line', data: { labels: [], datasets: [ds('Suhu (°C)', [], T), ds('Udara (%)', [], H)] }, options: o });
-      charts.soil = new Chart($('cSoil'), { type: 'line', data: { labels: [], datasets: [ds('Tanah (%)', [], So, 1), { label: 'Batas pompa ON', data: [], borderColor: css('--bad'), borderDash: [6, 5], pointRadius: 0 }] }, options: o });
-      charts.cnn = new Chart($('cCnn'), { type: 'bar', data: { labels: CLS.map(c => c.n), datasets: [{ label: 'Peluang (%)', data: [0, 0, 0, 0], backgroundColor: CLS.map(c => c.col), borderRadius: 6 }] }, options: { ...o, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } } } });
-    }
+<div id="toasts" role="status" aria-live="polite"></div>
+<script>
+const $=id=>document.getElementById(id),css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+/* KONFIGURASI: ubah nilai di sini (url Firebase, ip kamera, url model CNN, lebar bidang foto, mulai = tanggal hari pertama data (YYYY-MM-DD, kosong = otomatis dari data pertama), hp = hari pertama yang diprediksi (kartu LSTM menampilkan hp sampai hp+3), panen = hari panen, lstm = url model LSTM) */
+const DEF={url:'https://smart-farming-selada-default-rtdb.asia-southeast1.firebasedatabase.app/kelompok2.json',poll:2000,cnn:'',fov:20,mulai:'',hp:43,panen:45,lstm:'',demo:false,theme:'auto',cam:'10.96.92.235',cp:80,sp:81,tmin:20,tmax:28,hmin:60,hmax:80,smin:60,smax:80};
+let S={...DEF};try{S={...DEF,...JSON.parse(localStorage.getItem('selada')||'{}')}}catch(e){}
+let rows=[],seen=new Set(),alerts=[],lastState='',unread=0,timer=null,demoT=26,demoS=70,charts={};
+const TITLES={ringkasan:'Monitoring',grafik:'Grafik sensor',kamera:'Kamera ESP32-CAM',pompa:'CNN',prediksi:'LSTM'};
 
-    function refresh() {
-      const last = rows[rows.length - 1]; if (!last) { renderTable(); renderLstm(); return }
-      const lb = L(), n = +$('range').value, cut = a => a.slice(-n);
-      const set = (c, l, d) => { c.data.labels = l; d.forEach((x, i) => c.data.datasets[i].data = x); c.update() };
-      updateMonitor();
-      set(charts.all, cut(lb), [cut(col('temp')), cut(col('hum')), cut(col('soil'))]);
-      set(charts.dht, cut(lb), [cut(col('temp')), cut(col('hum'))]);
-      set(charts.soil, cut(lb), [cut(col('soil')), cut(col('soil')).map(() => S.smin)]);
-      /* kartu */
-      $('vT').textContent = last.temp + ' °C'; $('vH').textContent = last.hum + ' %'; $('vS').textContent = last.soil + ' %';
-      bdg('bT', last.temp >= S.tmin && last.temp <= S.tmax, 'Optimal', 'Di luar batas'); bdg('bH', last.hum >= S.hmin && last.hum <= S.hmax, 'Normal', 'Di luar batas');
-      bdg('bS', last.soil >= S.smin && last.soil <= S.smax, 'Ideal', last.soil < S.smin ? 'Kering' : 'Terlalu basah');
-      $('vP').textContent = last.pump ? 'ON' : 'OFF'; $('bP').textContent = last.pump ? 'Menyiram' : 'Standby'; $('bP').className = 'badge ' + (last.pump ? 'warn' : 'ok');
-      /* skor */
-      const pT = Math.min(30, miss(last.temp, S.tmin, S.tmax) * 6), pH = Math.min(30, miss(last.hum, S.hmin, S.hmax) * 1.5), pS = Math.min(30, miss(last.soil, S.smin, S.smax) * 1.5), sc = Math.round(Math.max(0, 100 - pT - pH - pS));
-      $('gTxt').textContent = sc; $('gLbl').textContent = sc >= 90 ? 'Sangat baik' : sc >= 70 ? 'Perlu perhatian' : 'Kritis';
-      const g = $('gBar'); g.style.strokeDashoffset = 314 * (1 - sc / 100); g.style.stroke = sc >= 90 ? css('--ok') : sc >= 70 ? css('--warn') : css('--bad');
-      /* statistik */
-      [['stT', 'temp', ' °C'], ['stH', 'hum', ' %'], ['stS', 'soil', ' %']].forEach(([id, k, u]) => { const s = stats(col(k)); $(id).innerHTML = `<div class="row"><span>Terendah</span><b>${s.min.toFixed(1)}${u}</b></div><div class="row"><span>Rata-rata</span><b>${s.avg.toFixed(1)}${u}</b></div><div class="row"><span>Tertinggi</span><b>${s.max.toFixed(1)}${u}</b></div>` });
-      renderLstm(); autoLstm(); renderTable()
-    }
+/* navigasi + hamburger */
+function go(p){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='p-'+p));
+ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+ $('title').textContent=TITLES[p];document.body.classList.remove('open');
+ setTimeout(()=>Object.values(charts).forEach(c=>c.resize()),60)}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.p));
+$('burger').onclick=()=>{innerWidth<=900?document.body.classList.toggle('open'):document.body.classList.toggle('mini');setTimeout(()=>Object.values(charts).forEach(c=>c.resize()),250)};
+$('scrim').onclick=()=>document.body.classList.remove('open');
+setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('id-ID');liveState()},1000);
 
-    /* LSTM: prediksi pertumbuhan */
-    let startT = null, lstmDay = -1, lstmT = 0; try { startT = localStorage.getItem('seladaMulai') } catch (e) { }
-    let lstmRemote = null, lstmPreds = null, lstmErr = '', lPick = 0, lImgs = [null, null, null, null];
-    try { const x = JSON.parse(localStorage.getItem('seladaImgs') || 'null'); if (Array.isArray(x) && x.length === 4) lImgs = x } catch (e) { }
-    const saveImgs = () => { try { localStorage.setItem('seladaImgs', JSON.stringify(lImgs)) } catch (e) { $('lSub').textContent = 'Foto tidak bisa disimpan permanen (penyimpanan browser penuh).' } };
-    const hscore = r => 100 - Math.min(30, miss(r.temp, S.tmin, S.tmax) * 6) - Math.min(30, miss(r.hum, S.hmin, S.hmax) * 1.5) - Math.min(30, miss(r.soil, S.smin, S.smax) * 1.5);
-    function dayStr(t) { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') }
-    function dayOf(t) { const st = S.mulai || startT; if (!st) return 0; return Math.max(1, Math.round((new Date(dayStr(t) + 'T00:00:00') - new Date(st + 'T00:00:00')) / 864e5) + 1) }
-    const stage = p => p < 10 ? 'Bibit' : p < 90 ? 'Masa Pertumbuhan' : 'Siap Panen';
-    const fmtT = t => new Date(t).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    function renderLstm() {
-      const last = rows[rows.length - 1], rs = rows.slice(-300);
-      if (last) { $('lSoil').textContent = last.soil + ' %'; $('lSoilT').textContent = 'Update: ' + fmtT(last.t); $('lTemp').textContent = last.temp + ' °C'; $('lTempT').textContent = 'Update: ' + fmtT(last.t) }
-      const hst = last ? dayOf(last.t) : 0; if (lstmRemote && lstmDay !== hst) lstmRemote = null;
-      let preds = lstmRemote, sub; const rng = 'hari ke-' + S.hp + ' sampai ' + (S.hp + 3);
-      if (preds) sub = 'Hasil analisis model LSTM untuk ' + rng + '.';
-      else if (lstmErr) sub = 'Gagal mengambil model LSTM (' + lstmErr + ').';
-      else if (last) {
-        const avg = rs.reduce((a, r) => a + hscore(r), 0) / rs.length, f = .6 + .4 * avg / 100;
-        preds = [0, 1, 2, 3].map(k => Math.min(100, (S.hp + k) / S.panen * 100 * f));
-        sub = 'Prediksi ' + rng + ' dari ' + rs.length + ' data sensor terakhir (faktor kondisi ' + (f * 100).toFixed(0) + '%). Perkiraan sederhana, bukan model LSTM terlatih.'
-      }
-      else sub = 'Prediksi untuk ' + rng + '. Belum ada data sensor, hasil muncul setelah data pertama masuk.';
-      lstmPreds = preds || null; $('lSub').textContent = sub;
-      $('lCards').innerHTML = [0, 1, 2, 3].map(i => {
-        const p = preds ? preds[i] : null, im = lImgs[i], d = S.hp + i;
-        return `<div class="lcard"><div class="top"><span>HARI KE-${d}</span><span class="badge ${p == null ? '' : 'ok'}">${p == null ? 'Menunggu' : stage(p)}</span></div><div class="pct">${p == null ? '--' : p.toFixed(1)}%</div><div class="prog"><i style="width:${p == null ? 0 : p}%"></i></div><div class="vis">Visualisasi Kondisi</div><div class="vbox" data-i="${i}" role="button" tabindex="0" aria-label="Unggah foto hari ke-${d}">${im ? `<img src="${im}" alt="Foto kondisi hari ke-${d}"><button class="vdel" data-del="${i}" type="button">Hapus</button>` : '＋ Unggah foto'}</div></div>`
-      }).join('');
-      const pm = $('pmState'); if (last) { const on = last.pump; pm.textContent = on ? 'ON (Menyiram)' : 'OFF (Standby)'; pm.className = 'pm-state ' + (on ? 'on' : 'off'); $('pmSub').textContent = 'Otomatisasi Aktif' } else { pm.textContent = '--'; pm.className = 'pm-state'; $('pmSub').textContent = 'Menunggu data' }
-      $('tbLstm').innerHTML = rows.length ? rows.slice(-5).reverse().map(r => `<tr><td>${new Date(r.t).toLocaleString('id-ID')}</td><td>${r.soil} %</td><td>${r.temp} °C</td><td><span class="badge ${r.status === 'Normal' ? 'ok' : 'warn'}">${r.status}</span></td></tr>`).join('') : '<tr><td colspan="4" class="empty">Belum ada data.</td></tr>'; renderLong()
-    }
-    function renderLong() {
-      const L = ['lSuhu', 'lHum', 'lSoil', 'lMat'].map(k => charts[k]), last = rows[rows.length - 1];
-      if (!last) { L.forEach(c => { c.data.labels = []; c.data.datasets.forEach(d => d.data = []); c.update() }); return }
-      const hst = dayOf(last.t), pd = [0, 1, 2, 3].map(k => S.hp + k), tot = Math.max(hst, pd[3]), labels = Array.from({ length: tot }, (_, i) => 'Hari ' + (i + 1)), agg = {};
-      rows.forEach(r => { const d = dayOf(r.t), a = agg[d] = agg[d] || { n: 0, temp: 0, hum: 0, soil: 0 }; a.n++; a.temp += r.temp; a.hum += r.hum; a.soil += r.soil });
-      const sensor = (k, lo, hi) => {
-        const obs = Array(tot).fill(null), fc = Array(tot).fill(null), pts = [];
-        for (let d = 1; d <= hst; d++)if (agg[d]) { const v = +(agg[d][k] / agg[d].n).toFixed(1); obs[d - 1] = v; pts.push([d, v]) }
-        if (pts.length) {
-          const use = pts.slice(-7), lp = pts[pts.length - 1], mean = use.reduce((a, p) => a + p[1], 0) / use.length; let m = 0, b = lp[1];
-          if (use.length >= 2) { const n = use.length, sx = use.reduce((a, p) => a + p[0], 0), sy = use.reduce((a, p) => a + p[1], 0), sxy = use.reduce((a, p) => a + p[0] * p[1], 0), sxx = use.reduce((a, p) => a + p[0] * p[0], 0), dn = n * sxx - sx * sx; m = dn ? (n * sxy - sx * sy) / dn : 0; b = (sy - m * sx) / n }
-          fc[lp[0] - 1] = lp[1]; pd.forEach(d => { if (d > hst) { const v = use.length >= 2 && d - hst <= 7 ? b + m * d : mean; fc[d - 1] = +Math.min(hi, Math.max(lo, v)).toFixed(1) } })
-        }
-        return [obs, fc]
-      };
-      const mat = () => {
-        const obs = Array(tot).fill(null), fc = Array(tot).fill(null), pr = lstmPreds || pd.map(d => d / S.panen * 100);
-        for (let d = 1; d <= hst; d++)obs[d - 1] = +Math.min(100, d / S.panen * 100).toFixed(1);
-        fc[hst - 1] = obs[hst - 1]; pd.forEach((d, j) => { if (d > hst) fc[d - 1] = +(+pr[j]).toFixed(1) }); return [obs, fc]
-      };
-      [['lSuhu', sensor('temp', -10, 60)], ['lHum', sensor('hum', 0, 100)], ['lSoil', sensor('soil', 0, 100)], ['lMat', mat()]].forEach(([k, [o, f]]) => { const c = charts[k]; c.data.labels = labels; c.data.datasets[0].data = o; c.data.datasets[1].data = f; c.update() });
-      $('lgHint').textContent = 'Rata-rata tiap hari, hari ke-1 sampai ke-' + hst + '. Garis putus-putus: prediksi hari ke-' + pd[0] + ' sampai ' + pd[3] + '. Sensor memakai tren linear bila jaraknya 7 hari atau kurang, selain itu rata-rata harian terbaru (mendatar); kematangan memakai kartu prediksi di atas.'
-    }
-    async function loadLstm() {
-      const last = rows[rows.length - 1]; if (!last) { renderLstm(); return }
-      const h = dayOf(last.t); lstmT = Date.now();
-      if (S.lstm) { try { const j = await (await fetch(S.lstm + (S.lstm.includes('?') ? '&' : '?') + 'hari_data=' + h + '&hari_prediksi=' + [0, 1, 2, 3].map(k => S.hp + k).join(','))).json(); if (!Array.isArray(j.prediksi) || j.prediksi.length !== 4) throw new Error('respons harus berisi prediksi berupa 4 angka'); lstmRemote = j.prediksi.map(Number); lstmDay = h; lstmErr = '' } catch (e) { lstmRemote = null; lstmErr = e.message } }
-      renderLstm()
-    }
-    function autoLstm() { if (S.lstm && Date.now() - lstmT > 10000) loadLstm() }
-    $('lReload').onclick = loadLstm;
-    $('lCards').addEventListener('click', e => {
-      const d = e.target.closest('[data-del]'); if (d) { lImgs[+d.dataset.del] = null; saveImgs(); renderLstm(); return }
-      const b = e.target.closest('.vbox'); if (b) { lPick = +b.dataset.i; $('lFile').click() }
-    });
-    $('lCards').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('vbox')) { e.preventDefault(); lPick = +e.target.dataset.i; $('lFile').click() } });
-    $('lFile').onchange = e => {
-      const f = e.target.files[0]; e.target.value = ''; if (!f) return; const img = new Image();
-      img.onload = () => {
-        const sc = Math.min(1, 480 / img.width), c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src); lImgs[lPick] = c.toDataURL('image/jpeg', .8); saveImgs(); renderLstm()
-      };
-      img.onerror = () => { $('lSub').textContent = 'File tidak bisa dibaca sebagai gambar.' }; img.src = URL.createObjectURL(f)
-    };
+/* tema */
+function theme(){const r=document.documentElement;S.theme==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',S.theme);
+ if(charts.all){Chart.defaults.color=css('--muted');Chart.defaults.borderColor=css('--grid');Object.values(charts).forEach(c=>c.update())}}
 
-    function renderTable() {
-      const tb = $('tb'); if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">Belum ada data. Data muncul otomatis saat ada data baru masuk ke Firebase.</td></tr>'; return }
-      tb.innerHTML = rows.slice(-100).reverse().map(r => `<tr><td>${new Date(r.t).toLocaleString('id-ID')}</td><td>${r.temp} °C</td><td>${r.hum} %</td><td>${r.soil} %</td><td>${r.status}</td><td><span class="badge ${r.pump ? 'warn' : 'ok'}">${r.pump ? 'ON' : 'OFF'}</span></td></tr>`).join('')
-    }
+/* push-ID Firebase -> waktu */
+const PC='-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+function pushTime(k){if(!k||k.length<8)return null;let t=0;for(let i=0;i<8;i++){const x=PC.indexOf(k[i]);if(x<0)return null;t=t*64+x}return t>1.4e12&&t<4e12?t:null}
 
-    /* kamera */
-    const base = p => `http://${S.cam}:${p}`;
-    function camInfo() { $('camIpTxt').textContent = S.cam || '(belum diisi)'; $('camUrl').textContent = S.cam ? base(S.sp) + '/stream' : '-' }
-    function needCam() { if (!S.cam) { $('camMsg').textContent = 'IP kamera belum diatur. Ubah nilai cam pada bagian KONFIGURASI di kode.'; return false } return true }
-    $('camOn').onclick = () => { if (!needCam()) return; $('cam').innerHTML = `<img alt="Live video" src="${base(S.sp)}/stream?${Date.now()}" onerror="this.parentNode.textContent='Stream tidak bisa dimuat. Periksa IP, jaringan, dan port.'">` };
-    $('camOff').onclick = () => { $('cam').innerHTML = 'Stream dihentikan.' };
-    $('camShot').onclick = () => { if (needCam()) window.open(base(S.cp) + '/capture', '_blank') };
-    const ctl = async (path, msg) => { if (!needCam()) return; try { await fetch(base(S.cp) + path, { mode: 'no-cors' }); $('camMsg').textContent = msg } catch (e) { $('camMsg').textContent = 'Perintah gagal dikirim: ' + e.message } };
-    $('camFlash').onclick = () => ctl('/flash', 'Perintah flash terkirim. Status lampu dibalik.');
-    $('camReset').onclick = () => { if (confirm('Hapus WiFi tersimpan di kamera?')) ctl('/resetwifi', 'WiFi kamera direset. Sambungkan ulang lewat 192.168.4.1.') };
-    $('camPortal').onclick = () => { if (needCam()) window.open(base(S.cp) + '/', '_blank') };
+/* ambil data */
+async function fetchFb(limit){
+ const u=S.url+(S.url.includes('?')?'&':'?')+'orderBy=%22$key%22&limitToLast='+limit;
+ const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+function ingest(obj){
+ if(!obj)return 0;let list=[];
+ if(obj.suhu!==undefined){list=[['single:'+JSON.stringify(obj),obj]]}
+ else list=Object.entries(obj).filter(([k,v])=>v&&typeof v==='object'&&v.suhu!==undefined);
+ list.sort((a,b)=>a[0]<b[0]?-1:1);let n=0;
+ for(const[k,v]of list){if(seen.has(k))continue;seen.add(k);
+  addRow({t:pushTime(k)||Date.now(),temp:+v.suhu,hum:+v.kelembapan_udara,soil:+v.kelembapan_tanah,status:v.status||'-'});n++}
+ return n}
+function addRow(r){r.pump=r.soil<S.smin;rows.push(r);if(rows.length>20000)rows.shift();
+ if(!S.mulai&&!startT){startT=dayStr(r.t);try{localStorage.setItem('seladaMulai',startT)}catch(e){}}}
+async function loadAll(){
+ rows=[];seen=new Set();
+ if(S.demo){for(let i=0;i<30;i++)demoTick(Date.now()-(30-i)*S.poll);return refresh()}
+ try{ingest(await fetchFb(60));fbState('ok');refresh()}catch(e){fbState('err',e.message)}}
+let ready=false;
+function markSeen(o){if(!o)return;if(o.suhu!==undefined)seen.add('single:'+JSON.stringify(o));else Object.keys(o).forEach(k=>seen.add(k))}
+/* Saat halaman dibuka: data lama di Firebase ditandai sudah dilihat dan TIDAK ditampilkan. */
+async function baseline(){try{markSeen(await fetchFb(60));ready=true;fbState('ok','Terhubung, menunggu data baru')}catch(e){fbState('err',e.message)}}
+async function poll(){
+ if(S.demo){demoTick(Date.now());fbState('ok','Mode demo');return refresh()}
+ if(!ready){await baseline();return}
+ try{const n=ingest(await fetchFb(5));fbState('ok',rows.length?undefined:'Terhubung, menunggu data baru');if(n){lastRecv=Date.now();refresh()}}catch(e){fbState('err',e.message)}}
+function demoTick(t){demoT+=(Math.random()-.48)*.5;demoT=Math.min(33,Math.max(19,demoT));
+ demoS+=(demoS<S.smin?4:-(Math.random()*1.6));demoS=Math.min(95,Math.max(30,demoS));
+ const h=62+(Math.random()-.5)*10,st=demoS<S.smin?'Kering':demoS>S.smax?'Basah':'Normal';
+ addRow({t,temp:+demoT.toFixed(1),hum:+h.toFixed(0),soil:Math.round(demoS),status:st})}
+function fbState(s,m){$('fbDot').className='dot '+(s==='ok'?'ok':'err');$('fbTxt').textContent=s==='ok'?(m||'Terhubung ke Firebase'):'Gagal: '+m}
+function restart(){clearInterval(timer);timer=setInterval(poll,Math.max(1000,S.poll))}
 
-    /* CNN lebar daun */
-    const CLS = [{ n: 'Bibit (<3 cm)', c: 2, col: '#7c5cd6' }, { n: 'Vegetatif awal (3-6 cm)', c: 4.5, col: '#2f7fd1' }, { n: 'Vegetatif (6-10 cm)', c: 8, col: '#2f9e5b' }, { n: 'Siap panen (>10 cm)', c: 12, col: '#e8890c' }];
-    function cnnScore(w) { const e = CLS.map(k => Math.exp(-((w - k.c) ** 2) / (2 * 1.8 * 1.8))), t = e.reduce((a, b) => a + b, 0) || 1; return e.map(v => v / t * 100) }
-    function cnnShow(w, pr, src) {
-      pr = pr || cnnScore(w); const m = pr.indexOf(Math.max(...pr));
-      charts.cnn.data.datasets[0].data = pr.map(v => +v.toFixed(1)); charts.cnn.data.datasets[0].backgroundColor = CLS.map((k, i) => i === m ? k.col : k.col + '55'); charts.cnn.update();
-      $('cnnCls').textContent = CLS[m].n; $('cnnConf').textContent = pr[m].toFixed(1) + ' %'; $('cnnSrc').textContent = src
-    }
-    let cnnFile = null;
-    function cnnReset(msg) { charts.cnn.data.datasets[0].data = [0, 0, 0, 0]; charts.cnn.update();['cnnW', 'cnnCls', 'cnnConf', 'cnnSrc'].forEach(i => $(i).textContent = '-'); $('cnnMsg').textContent = msg }
-    const LEAF_MIN = 0.08;
-    function toast(type, title, msg) {
-      const t = document.createElement('div'); t.className = 'toast ' + (type === 'ok' ? '' : 'bad');
-      t.innerHTML = '<span>' + (type === 'ok' ? '✅' : '⚠️') + '</span><div class="tx"><b></b><span></span></div><button type="button" aria-label="Tutup">×</button>';
-      t.querySelector('b').textContent = title; t.querySelector('.tx span').textContent = msg;
-      t.querySelector('button').onclick = () => t.remove(); $('toasts').appendChild(t); setTimeout(() => t.remove(), 7000)
-    }
-    function note(type, title, msg) { const n = $('cnnNote'); n.hidden = false; n.className = 'note ' + type; n.innerHTML = '<b></b><span></span>'; n.querySelector('b').textContent = (type === 'ok' ? '✅ ' : '⚠️ ') + title; n.querySelector('span').textContent = msg; toast(type, title, msg) }
-    function analyzeImage(img) {
-      const sc = Math.min(1, 420 / img.width), w = Math.round(img.width * sc), h = Math.round(img.height * sc), cv = $('cPrev');
-      cv.width = w; cv.height = h; cv.style.display = 'block';
-      const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
-      const d = x.getImageData(0, 0, w, h), a = d.data, hist = new Array(w).fill(0), mask = new Uint8Array(w * h); let n = 0, y1 = h, y2 = 0;
-      for (let i = 0, p = 0; i < a.length; i += 4, p++) {
-        const r = a[i], g = a[i + 1], b = a[i + 2];
-        if (g > 50 && 2 * g - r - b > 30) { mask[p] = 1; n++; hist[p % w]++; const yy = (p / w) | 0; if (yy < y1) y1 = yy; if (yy > y2) y2 = yy }
-      }
-      const ratio = n / (w * h); if (ratio < LEAF_MIN) return { ok: false, ratio };
-      let c = 0, x1 = 0, x2 = w - 1; for (let i = 0; i < w; i++) { c += hist[i]; if (c >= n * .01) { x1 = i; break } } c = 0; for (let i = w - 1; i >= 0; i--) { c += hist[i]; if (c >= n * .01) { x2 = i; break } }
-      for (let i = 0, p = 0; i < a.length; i += 4, p++)if (mask[p]) { a[i] = a[i] * .55 + 255 * .45; a[i + 1] = a[i + 1] * .55 + 61 * .45; a[i + 2] = a[i + 2] * .55 + 154 * .45 }
-      x.putImageData(d, 0, 0); x.lineWidth = 2; x.strokeStyle = '#8bd450'; x.strokeRect(x1, y1, x2 - x1, y2 - y1);
-      return { ok: true, ratio, cm: (x2 - x1) / w * S.fov }
-    }
-    $('cFile').onchange = e => {
-      const f = e.target.files[0]; if (!f) return; cnnFile = f; $('cnnDel').hidden = false; $('cnnNote').hidden = true; const img = new Image();
-      img.onload = () => {
-        const r = analyzeImage(img); URL.revokeObjectURL(img.src); const pc = (r.ratio * 100).toFixed(1);
-        if (!r.ok) {
-          cnnReset('Foto tidak diproses karena bukan selada.');
-          note('bad', 'Foto bukan selada', 'Area daun hijau hanya ' + pc + '% dari foto (minimal ' + LEAF_MIN * 100 + '%). Unggah foto daun selada yang jelas.'); return
-        }
-        const w = +r.cm.toFixed(1); $('cnnW').textContent = w + ' cm'; cnnShow(w, null, 'Segmentasi foto');
-        $('cnnMsg').textContent = 'Area daun ditandai merah muda, lebar diukur antara garis tepi hijau. Ukuran cm bergantung pada "Lebar bidang foto" pada KONFIGURASI di kode (sekarang ' + S.fov + ' cm).';
-        note('ok', 'Selada terdeteksi', 'Area daun hijau mencakup ' + pc + '% foto. Lebar daun sekitar ' + w + ' cm, fase ' + $('cnnCls').textContent + '.')
-      };
-      img.onerror = () => cnnReset('File tidak bisa dibaca sebagai gambar.'); img.src = URL.createObjectURL(f)
-    };
-    $('cnnDel').onclick = () => {
-      cnnFile = null; $('cFile').value = ''; const cv = $('cPrev'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); cv.style.display = 'none';
-      $('cnnNote').hidden = true; $('cnnDel').hidden = true; cnnReset('Foto dihapus. Unggah foto daun selada untuk memulai lagi.')
-    };
-    $('cnnRemote').onclick = async () => {
-      if (!cnnFile) { $('cnnMsg').textContent = 'Pilih foto daun terlebih dahulu.'; return }
-      if (!S.cnn) { $('cnnMsg').textContent = 'URL model CNN belum diatur (nilai cnn pada bagian KONFIGURASI di kode).'; return }
-      try {
-        const fd = new FormData(); fd.append('file', cnnFile); const j = await (await fetch(S.cnn, { method: 'POST', body: fd })).json(), w = +j.lebar_daun_cm;
-        const pr = Array.isArray(j.probabilitas) && j.probabilitas.length === 4 ? j.probabilitas.map(x => x * 100) : null;
-        if (j.selada === false) { cnnReset('Foto bukan selada menurut model CNN.'); note('bad', 'Foto bukan selada', 'Model CNN tidak mengenali foto ini sebagai selada.'); return }
-        if (!pr && isNaN(w)) throw new Error('respons tidak berisi lebar_daun_cm atau probabilitas');
-        if (!isNaN(w)) $('cnnW').textContent = w.toFixed(1) + ' cm'; cnnShow(pr ? w : w, pr, 'Model CNN'); if (j.selada === true) note('ok', 'Selada terdeteksi', 'Model CNN mengenali foto ini sebagai selada.'); $('cnnMsg').textContent = 'Hasil diambil dari model CNN.'
-      }
-      catch (e) { $('cnnMsg').textContent = 'Gagal menghubungi model: ' + e.message }
-    };
+/* statistik & regresi */
+const col=k=>rows.map(r=>r[k]);
+function stats(a){if(!a.length)return null;return{min:Math.min(...a),max:Math.max(...a),avg:a.reduce((x,y)=>x+y,0)/a.length}}
+const bdg=(id,ok,a,b)=>{const e=$(id);e.textContent=ok?a:b;e.className='badge '+(ok?'ok':'warn')};
+const miss=(v,a,b)=>v<a?a-v:v>b?v-b:0;
 
-    /* perbesar kamera */
-    $('camBig').onclick = () => { const w = document.querySelector('.kgrid').classList.toggle('wide'); $('camBig').textContent = w ? 'Perkecil' : 'Perbesar'; setTimeout(() => $('cam').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50) };
-    const goFull = () => { const c = $('cam'); document.fullscreenElement ? document.exitFullscreen() : (c.requestFullscreen ? c.requestFullscreen() : ($('camMsg').textContent = 'Browser tidak mendukung layar penuh.')) };
-    $('camFull').onclick = goFull; $('cam').ondblclick = goFull;
+/* grafik */
+const L=()=>rows.map(r=>new Date(r.t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+function ds(l,d,c,f){return{label:l,data:d,borderColor:c,backgroundColor:c+'22',tension:.35,fill:!!f,pointRadius:2}}
+function setup(){
+ Chart.defaults.color=css('--muted');Chart.defaults.borderColor=css('--grid');Chart.defaults.font.family='system-ui,sans-serif';
+ const o={responsive:true,maintainAspectRatio:false,animation:false};const T=css('--temp'),H=css('--hum'),So=css('--soil');
+ const one=(id,label,color,ax)=>new Chart($(id),{type:'line',data:{labels:[],datasets:[ds(label,[],color,1)]},options:{...o,plugins:{legend:{display:false}},scales:{y:ax}}});
+ charts.mSuhu=one('cMSuhu','Suhu (°C)',T,{suggestedMin:15,suggestedMax:35});
+ charts.mHum=one('cMHum','Kelembapan udara (%)',H,{min:0,max:100});
+ charts.mSoil=one('cMSoil','Kelembapan tanah (%)',So,{min:0,max:100});
+ charts.mMat=one('cMMat','Tingkat kematangan (%)',css('--pur'),{beginAtZero:true,suggestedMax:10});
+ const lone=(id,label,color,ax)=>new Chart($(id),{type:'line',data:{labels:[],datasets:[{...ds(label,[],color,1),spanGaps:true},{...ds('Prediksi',[],color),borderDash:[6,5],pointRadius:4,pointStyle:'triangle',spanGaps:true}]},options:{...o,plugins:{legend:{display:true,position:'bottom'}},scales:{y:ax}}});
+ charts.lSuhu=lone('cLSuhu','Rata-rata harian (°C)',T,{suggestedMin:15,suggestedMax:35});
+ charts.lHum=lone('cLHum','Rata-rata harian (%)',H,{min:0,max:100});
+ charts.lSoil=lone('cLSoil','Rata-rata harian (%)',So,{min:0,max:100});
+ charts.lMat=lone('cLMat','Kematangan (%)',css('--pur'),{beginAtZero:true,suggestedMax:10});
+ charts.all=new Chart($('cAll'),{type:'line',data:{labels:[],datasets:[ds('Suhu (°C)',[],T,1),ds('Kelembapan udara (%)',[],H,1),ds('Kelembapan tanah (%)',[],So,1)]},options:o});
+ charts.dht=new Chart($('cDht'),{type:'line',data:{labels:[],datasets:[ds('Suhu (°C)',[],T),ds('Udara (%)',[],H)]},options:o});
+ charts.soil=new Chart($('cSoil'),{type:'line',data:{labels:[],datasets:[ds('Tanah (%)',[],So,1),{label:'Batas pompa ON',data:[],borderColor:css('--bad'),borderDash:[6,5],pointRadius:0}]},options:o});
+    charts.cnn=new Chart($('cCnn'),{type:'bar',data:{labels:CLS.map(c=>c.n),datasets:[{label:'Peluang (%)',data:[0,0,0,0],backgroundColor:CLS.map(c=>c.col),borderRadius:6}]},options:{...o,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}});
+ }
 
-    /* grafik real-time sejak awal */
-    let mPaused = false, lastRecv = 0; const MAXP = 300;
-    function matur(t) { const st = S.mulai || startT; if (!st) return 0; return Math.max(0, Math.min(100, (t - new Date(st + 'T00:00:00')) / 864e5 / S.panen * 100)) }
-    function liveState() {
-      const e = $('mLive'); let t, c = 'badge';
-      if (mPaused) t = 'Jeda'; else if (!rows.length) t = 'Menunggu data'; else if (Date.now() - lastRecv < 10000) { t = '● LIVE'; c = 'badge ok' } else { t = 'Tidak ada data baru'; c = 'badge warn' }
-      e.textContent = t; e.className = c
-    }
-    function updateMonitor(force) {
-      if ((mPaused && !force) || !rows.length) return;
-      const sel = $('mRange').value, src = sel === 'all' ? rows : rows.slice(-(+sel)), k = Math.max(1, Math.ceil(src.length / MAXP)), L = [], T = [], H = [], So = [], M = [];
-      const fm = rows[rows.length - 1].t - rows[0].t > 864e5 ? { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' } : { hour: '2-digit', minute: '2-digit', second: '2-digit' };
-      for (let i = 0; i < src.length; i += k) {
-        const b = src.slice(i, i + k), av = key => b.reduce((a, r) => a + r[key], 0) / b.length;
-        L.push(new Date(b[0].t).toLocaleString('id-ID', fm)); T.push(+av('temp').toFixed(1)); H.push(+av('hum').toFixed(1)); So.push(+av('soil').toFixed(1)); M.push(+matur(b[b.length - 1].t).toFixed(2))
-      }
-      [['mSuhu', T], ['mHum', H], ['mSoil', So], ['mMat', M]].forEach(([k, d]) => { const c = charts[k]; c.data.labels = L; c.data.datasets[0].data = d; c.data.datasets[0].pointRadius = L.length > 80 ? 0 : 2; c.update() });
-      $('mvT').textContent = T[T.length - 1] + ' °C'; $('mvH').textContent = H[H.length - 1] + ' %'; $('mvS').textContent = So[So.length - 1] + ' %'; $('mvM').textContent = M[M.length - 1] + ' %';
-      $('mInfo').textContent = rows.length + ' data sejak ' + fmtT(rows[0].t) + ' · ditampilkan ' + L.length + ' titik' + (k > 1 ? ' (rata-rata tiap ' + k + ' data)' : '') + ' · kematangan ' + M[M.length - 1] + '%'; liveState()
-    }
-    $('mPause').onclick = () => { mPaused = !mPaused; $('mPause').textContent = mPaused ? 'Lanjutkan' : 'Jeda'; if (!mPaused) updateMonitor(true); liveState() };
-    $('mRange').onchange = () => updateMonitor(true);
+function refresh(){
+ const last=rows[rows.length-1];if(!last){renderTable();renderLstm();return}
+ const lb=L(),n=+$('range').value,cut=a=>a.slice(-n);
+ const set=(c,l,d)=>{c.data.labels=l;d.forEach((x,i)=>c.data.datasets[i].data=x);c.update()};
+ updateMonitor();
+ set(charts.all,cut(lb),[cut(col('temp')),cut(col('hum')),cut(col('soil'))]);
+ set(charts.dht,cut(lb),[cut(col('temp')),cut(col('hum'))]);
+ set(charts.soil,cut(lb),[cut(col('soil')),cut(col('soil')).map(()=>S.smin)]);
+ /* kartu */
+ $('vT').textContent=last.temp+' °C';$('vH').textContent=last.hum+' %';$('vS').textContent=last.soil+' %';
+ bdg('bT',last.temp>=S.tmin&&last.temp<=S.tmax,'Optimal','Di luar batas');bdg('bH',last.hum>=S.hmin&&last.hum<=S.hmax,'Normal','Di luar batas');
+ bdg('bS',last.soil>=S.smin&&last.soil<=S.smax,'Ideal',last.soil<S.smin?'Kering':'Terlalu basah');
+ $('vP').textContent=last.pump?'ON':'OFF';$('bP').textContent=last.pump?'Menyiram':'Standby';$('bP').className='badge '+(last.pump?'warn':'ok');
+ /* skor */
+ const pT=Math.min(30,miss(last.temp,S.tmin,S.tmax)*6),pH=Math.min(30,miss(last.hum,S.hmin,S.hmax)*1.5),pS=Math.min(30,miss(last.soil,S.smin,S.smax)*1.5),sc=Math.round(Math.max(0,100-pT-pH-pS));
+ $('gTxt').textContent=sc;$('gLbl').textContent=sc>=90?'Sangat baik':sc>=70?'Perlu perhatian':'Kritis';
+ const g=$('gBar');g.style.strokeDashoffset=314*(1-sc/100);g.style.stroke=sc>=90?css('--ok'):sc>=70?css('--warn'):css('--bad');
+ /* statistik */
+ [['stT','temp',' °C'],['stH','hum',' %'],['stS','soil',' %']].forEach(([id,k,u])=>{const s=stats(col(k));$(id).innerHTML=`<div class="row"><span>Terendah</span><b>${s.min.toFixed(1)}${u}</b></div><div class="row"><span>Rata-rata</span><b>${s.avg.toFixed(1)}${u}</b></div><div class="row"><span>Tertinggi</span><b>${s.max.toFixed(1)}${u}</b></div>`});
+ renderLstm();autoLstm();renderTable()}
 
-    /* riwayat */
-    $('range').onchange = refresh; $('btnReload').onclick = loadAll;
-    $('btnClear').onclick = () => { rows = []; renderTable();['mSuhu', 'mHum', 'mSoil', 'mMat', 'all', 'dht', 'soil'].forEach(k => { charts[k].data.labels = []; charts[k].data.datasets.forEach(d => d.data = []); charts[k].update() }) };
-    $('btnCsv').onclick = () => {
-      if (!rows.length) return; const csv = 'waktu,suhu,kelembapan_udara,kelembapan_tanah,status,pompa\n' + rows.map(r => [new Date(r.t).toISOString(), r.temp, r.hum, r.soil, r.status, r.pump ? 'ON' : 'OFF'].join(',')).join('\n');
-      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'riwayat-selada.csv'; a.click()
-    };
+/* LSTM: prediksi pertumbuhan */
+let startT=null,lstmDay=-1,lstmT=0;try{startT=localStorage.getItem('seladaMulai')}catch(e){}
+let lstmRemote=null,lstmPreds=null,lstmErr='',lPick=0,lImgs=[null,null,null,null];
+try{const x=JSON.parse(localStorage.getItem('seladaImgs')||'null');if(Array.isArray(x)&&x.length===4)lImgs=x}catch(e){}
+const saveImgs=()=>{try{localStorage.setItem('seladaImgs',JSON.stringify(lImgs))}catch(e){$('lSub').textContent='Foto tidak bisa disimpan permanen (penyimpanan browser penuh).'}};
+const hscore=r=>100-Math.min(30,miss(r.temp,S.tmin,S.tmax)*6)-Math.min(30,miss(r.hum,S.hmin,S.hmax)*1.5)-Math.min(30,miss(r.soil,S.smin,S.smax)*1.5);
+function dayStr(t){const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function dayOf(t){const st=S.mulai||startT;if(!st)return 0;return Math.max(1,Math.round((new Date(dayStr(t)+'T00:00:00')-new Date(st+'T00:00:00'))/864e5)+1)}
+const stage=p=>p<10?'Bibit':p<90?'Masa Pertumbuhan':'Siap Panen';
+const fmtT=t=>new Date(t).toLocaleString('id-ID',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+function renderLstm(){
+ const last=rows[rows.length-1],rs=rows.slice(-300);
+ if(last){$('lSoil').textContent=last.soil+' %';$('lSoilT').textContent='Update: '+fmtT(last.t);$('lTemp').textContent=last.temp+' °C';$('lTempT').textContent='Update: '+fmtT(last.t)}
+ const hst=last?dayOf(last.t):0;if(lstmRemote&&lstmDay!==hst)lstmRemote=null;
+ let preds=lstmRemote,sub;const rng='hari ke-'+S.hp+' sampai '+(S.hp+3);
+ if(preds)sub='Hasil analisis model LSTM untuk '+rng+'.';
+ else if(lstmErr)sub='Gagal mengambil model LSTM ('+lstmErr+').';
+ else if(last){const avg=rs.reduce((a,r)=>a+hscore(r),0)/rs.length,f=.6+.4*avg/100;
+  preds=[0,1,2,3].map(k=>Math.min(100,(S.hp+k)/S.panen*100*f));
+  sub='Prediksi '+rng+' dari '+rs.length+' data sensor terakhir (faktor kondisi '+(f*100).toFixed(0)+'%). Perkiraan sederhana, bukan model LSTM terlatih.'}
+ else sub='Prediksi untuk '+rng+'. Belum ada data sensor, hasil muncul setelah data pertama masuk.';
+ lstmPreds=preds||null;$('lSub').textContent=sub;
+ $('lCards').innerHTML=[0,1,2,3].map(i=>{const p=preds?preds[i]:null,im=lImgs[i],d=S.hp+i;
+  return `<div class="lcard"><div class="top"><span>HARI KE-${d}</span><span class="badge ${p==null?'':'ok'}">${p==null?'Menunggu':stage(p)}</span></div><div class="pct">${p==null?'--':p.toFixed(1)}%</div><div class="prog"><i style="width:${p==null?0:p}%"></i></div><div class="vis">Visualisasi Kondisi</div><div class="vbox" data-i="${i}" role="button" tabindex="0" aria-label="Unggah foto hari ke-${d}">${im?`<img src="${im}" alt="Foto kondisi hari ke-${d}"><button class="vdel" data-del="${i}" type="button">Hapus</button>`:'＋ Unggah foto'}</div></div>`}).join('');
+ const pm=$('pmState');if(last){const on=last.pump;pm.textContent=on?'ON (Menyiram)':'OFF (Standby)';pm.className='pm-state '+(on?'on':'off');$('pmSub').textContent='Otomatisasi Aktif'}else{pm.textContent='--';pm.className='pm-state';$('pmSub').textContent='Menunggu data'}
+ $('tbLstm').innerHTML=rows.length?rows.slice(-5).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString('id-ID')}</td><td>${r.soil} %</td><td>${r.temp} °C</td><td><span class="badge ${r.status==='Normal'?'ok':'warn'}">${r.status}</span></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada data.</td></tr>';renderLong()}
+function renderLong(){
+ const L=['lSuhu','lHum','lSoil','lMat'].map(k=>charts[k]),last=rows[rows.length-1];
+ if(!last){L.forEach(c=>{c.data.labels=[];c.data.datasets.forEach(d=>d.data=[]);c.update()});return}
+ const hst=dayOf(last.t),pd=[0,1,2,3].map(k=>S.hp+k),tot=Math.max(hst,pd[3]),labels=Array.from({length:tot},(_,i)=>'Hari '+(i+1)),agg={};
+ rows.forEach(r=>{const d=dayOf(r.t),a=agg[d]=agg[d]||{n:0,temp:0,hum:0,soil:0};a.n++;a.temp+=r.temp;a.hum+=r.hum;a.soil+=r.soil});
+ const sensor=(k,lo,hi)=>{const obs=Array(tot).fill(null),fc=Array(tot).fill(null),pts=[];
+  for(let d=1;d<=hst;d++)if(agg[d]){const v=+(agg[d][k]/agg[d].n).toFixed(1);obs[d-1]=v;pts.push([d,v])}
+  if(pts.length){const use=pts.slice(-7),lp=pts[pts.length-1],mean=use.reduce((a,p)=>a+p[1],0)/use.length;let m=0,b=lp[1];
+   if(use.length>=2){const n=use.length,sx=use.reduce((a,p)=>a+p[0],0),sy=use.reduce((a,p)=>a+p[1],0),sxy=use.reduce((a,p)=>a+p[0]*p[1],0),sxx=use.reduce((a,p)=>a+p[0]*p[0],0),dn=n*sxx-sx*sx;m=dn?(n*sxy-sx*sy)/dn:0;b=(sy-m*sx)/n}
+   fc[lp[0]-1]=lp[1];pd.forEach(d=>{if(d>hst){const v=use.length>=2&&d-hst<=7?b+m*d:mean;fc[d-1]=+Math.min(hi,Math.max(lo,v)).toFixed(1)}})}
+  return[obs,fc]};
+ const mat=()=>{const obs=Array(tot).fill(null),fc=Array(tot).fill(null),pr=lstmPreds||pd.map(d=>d/S.panen*100);
+  for(let d=1;d<=hst;d++)obs[d-1]=+Math.min(100,d/S.panen*100).toFixed(1);
+  fc[hst-1]=obs[hst-1];pd.forEach((d,j)=>{if(d>hst)fc[d-1]=+(+pr[j]).toFixed(1)});return[obs,fc]};
+ [['lSuhu',sensor('temp',-10,60)],['lHum',sensor('hum',0,100)],['lSoil',sensor('soil',0,100)],['lMat',mat()]].forEach(([k,[o,f]])=>{const c=charts[k];c.data.labels=labels;c.data.datasets[0].data=o;c.data.datasets[1].data=f;c.update()});
+ $('lgHint').textContent='Rata-rata tiap hari, hari ke-1 sampai ke-'+hst+'. Garis putus-putus: prediksi hari ke-'+pd[0]+' sampai '+pd[3]+'. Sensor memakai tren linear bila jaraknya 7 hari atau kurang, selain itu rata-rata harian terbaru (mendatar); kematangan memakai kartu prediksi di atas.'}
+async function loadLstm(){
+ const last=rows[rows.length-1];if(!last){renderLstm();return}
+ const h=dayOf(last.t);lstmT=Date.now();
+ if(S.lstm){try{const j=await(await fetch(S.lstm+(S.lstm.includes('?')?'&':'?')+'hari_data='+h+'&hari_prediksi='+[0,1,2,3].map(k=>S.hp+k).join(','))).json();if(!Array.isArray(j.prediksi)||j.prediksi.length!==4)throw new Error('respons harus berisi prediksi berupa 4 angka');lstmRemote=j.prediksi.map(Number);lstmDay=h;lstmErr=''}catch(e){lstmRemote=null;lstmErr=e.message}}
+ renderLstm()}
+function autoLstm(){if(S.lstm&&Date.now()-lstmT>10000)loadLstm()}
+$('lReload').onclick=loadLstm;
+$('lCards').addEventListener('click',e=>{const d=e.target.closest('[data-del]');if(d){lImgs[+d.dataset.del]=null;saveImgs();renderLstm();return}
+ const b=e.target.closest('.vbox');if(b){lPick=+b.dataset.i;$('lFile').click()}});
+$('lCards').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('vbox')){e.preventDefault();lPick=+e.target.dataset.i;$('lFile').click()}});
+$('lFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const img=new Image();
+ img.onload=()=>{const sc=Math.min(1,480/img.width),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(img.src);lImgs[lPick]=c.toDataURL('image/jpeg',.8);saveImgs();renderLstm()};
+ img.onerror=()=>{$('lSub').textContent='File tidak bisa dibaca sebagai gambar.'};img.src=URL.createObjectURL(f)};
 
-    setup(); camInfo(); theme(); renderTable(); renderLstm(); restart(); baseline();
-  </script>
+function renderTable(){const tb=$('tb');if(!rows.length){tb.innerHTML='<tr><td colspan="6" class="empty">Belum ada data. Data muncul otomatis saat ada data baru masuk ke Firebase.</td></tr>';return}
+ tb.innerHTML=rows.slice(-100).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString('id-ID')}</td><td>${r.temp} °C</td><td>${r.hum} %</td><td>${r.soil} %</td><td>${r.status}</td><td><span class="badge ${r.pump?'warn':'ok'}">${r.pump?'ON':'OFF'}</span></td></tr>`).join('')}
+
+/* kamera */
+const base=p=>`http://${S.cam}:${p}`;
+function camInfo(){$('camIpTxt').textContent=S.cam||'(belum diisi)';$('camUrl').textContent=S.cam?base(S.sp)+'/stream':'-';$('camIpIn').value=S.cam||''}
+function needCam(){if(!S.cam){$('camMsg').textContent='IP kamera belum diatur. Isi IP pada kolom "Sambungkan ke IP baru".';return false}return true}
+$('camOn').onclick=()=>{if(!needCam())return;$('cam').innerHTML=`<img alt="Live video" src="${base(S.sp)}/stream?${Date.now()}" onerror="this.parentNode.textContent='Stream tidak bisa dimuat. Periksa IP, jaringan, dan port.'">`};
+$('camOff').onclick=()=>{$('cam').innerHTML='Stream dihentikan.'};
+$('camShot').onclick=()=>{if(needCam())window.open(base(S.cp)+'/capture','_blank')};
+const ctl=async(path,msg)=>{if(!needCam())return;try{await fetch(base(S.cp)+path,{mode:'no-cors'});$('camMsg').textContent=msg}catch(e){$('camMsg').textContent='Perintah gagal dikirim: '+e.message}};
+$('camFlash').onclick=()=>ctl('/flash','Perintah flash terkirim. Status lampu dibalik.');
+$('camReset').onclick=()=>{if(confirm('Hapus WiFi tersimpan di kamera?'))ctl('/resetwifi','WiFi kamera direset. Sambungkan ulang lewat 192.168.4.1.')};
+$('camPortal').onclick=()=>{if(needCam())window.open(base(S.cp)+'/','_blank')};
+
+/* sambungkan ke IP kamera baru */
+function saveCfg(fn){try{const o=JSON.parse(localStorage.getItem('selada')||'{}');fn(o);localStorage.setItem('selada',JSON.stringify(o));return true}catch(e){return false}}
+const validHost=h=>{const m=h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);return m?m.slice(1).every(x=>+x<=255):/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i.test(h)};
+function connectCam(h,txt){S.cam=h;camInfo();
+ const ok=h===DEF.cam?saveCfg(o=>{delete o.cam}):saveCfg(o=>{o.cam=h});
+ $('camMsg').textContent=txt+(ok?'':' (tidak bisa disimpan permanen di browser ini)');
+ $('camOn').click()}
+$('camIpSave').onclick=()=>{const h=$('camIpIn').value.trim().replace(/^https?:\/\//i,'').split('/')[0];
+ if(!h)return void($('camMsg').textContent='Isi alamat IP kamera dulu.');
+ if(h.includes(':'))return void($('camMsg').textContent='Isi IP saja tanpa port (port kontrol '+S.cp+', stream '+S.sp+').');
+ if(!validHost(h))return void($('camMsg').textContent='Format IP tidak valid. Contoh: 192.168.1.50');
+ connectCam(h,'Menyambungkan ke '+h+'...')};
+$('camIpDef').onclick=()=>connectCam(DEF.cam,'IP kamera dikembalikan ke default ('+DEF.cam+').');
+$('camIpIn').onkeydown=e=>{if(e.key==='Enter')$('camIpSave').click()};
+
+/* CNN lebar daun */
+const CLS=[{n:'Bibit (<3 cm)',c:2,col:'#7c5cd6'},{n:'Vegetatif awal (3-6 cm)',c:4.5,col:'#2f7fd1'},{n:'Vegetatif (6-10 cm)',c:8,col:'#2f9e5b'},{n:'Siap panen (>10 cm)',c:12,col:'#e8890c'}];
+function cnnScore(w){const e=CLS.map(k=>Math.exp(-((w-k.c)**2)/(2*1.8*1.8))),t=e.reduce((a,b)=>a+b,0)||1;return e.map(v=>v/t*100)}
+function cnnShow(w,pr,src){pr=pr||cnnScore(w);const m=pr.indexOf(Math.max(...pr));
+ charts.cnn.data.datasets[0].data=pr.map(v=>+v.toFixed(1));charts.cnn.data.datasets[0].backgroundColor=CLS.map((k,i)=>i===m?k.col:k.col+'55');charts.cnn.update();
+ $('cnnCls').textContent=CLS[m].n;$('cnnConf').textContent=pr[m].toFixed(1)+' %';$('cnnSrc').textContent=src}
+let cnnFile=null;
+function cnnReset(msg){charts.cnn.data.datasets[0].data=[0,0,0,0];charts.cnn.update();['cnnW','cnnCls','cnnConf','cnnSrc'].forEach(i=>$(i).textContent='-');$('cnnMsg').textContent=msg}
+const LEAF_MIN=0.08;
+function toast(type,title,msg){const t=document.createElement('div');t.className='toast '+(type==='ok'?'':'bad');
+ t.innerHTML='<span>'+(type==='ok'?'✅':'⚠️')+'</span><div class="tx"><b></b><span></span></div><button type="button" aria-label="Tutup">×</button>';
+ t.querySelector('b').textContent=title;t.querySelector('.tx span').textContent=msg;
+ t.querySelector('button').onclick=()=>t.remove();$('toasts').appendChild(t);setTimeout(()=>t.remove(),7000)}
+function note(type,title,msg){const n=$('cnnNote');n.hidden=false;n.className='note '+type;n.innerHTML='<b></b><span></span>';n.querySelector('b').textContent=(type==='ok'?'✅ ':'⚠️ ')+title;n.querySelector('span').textContent=msg;toast(type,title,msg)}
+function analyzeImage(img){
+ const sc=Math.min(1,420/img.width),w=Math.round(img.width*sc),h=Math.round(img.height*sc),cv=$('cPrev');
+ cv.width=w;cv.height=h;cv.style.display='block';
+ const x=cv.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+ const d=x.getImageData(0,0,w,h),a=d.data,hist=new Array(w).fill(0),mask=new Uint8Array(w*h);let n=0,y1=h,y2=0;
+ for(let i=0,p=0;i<a.length;i+=4,p++){const r=a[i],g=a[i+1],b=a[i+2];
+  if(g>50&&2*g-r-b>30){mask[p]=1;n++;hist[p%w]++;const yy=(p/w)|0;if(yy<y1)y1=yy;if(yy>y2)y2=yy}}
+ const ratio=n/(w*h);if(ratio<LEAF_MIN)return{ok:false,ratio};
+ let c=0,x1=0,x2=w-1;for(let i=0;i<w;i++){c+=hist[i];if(c>=n*.01){x1=i;break}}c=0;for(let i=w-1;i>=0;i--){c+=hist[i];if(c>=n*.01){x2=i;break}}
+ for(let i=0,p=0;i<a.length;i+=4,p++)if(mask[p]){a[i]=a[i]*.55+255*.45;a[i+1]=a[i+1]*.55+61*.45;a[i+2]=a[i+2]*.55+154*.45}
+ x.putImageData(d,0,0);x.lineWidth=2;x.strokeStyle='#8bd450';x.strokeRect(x1,y1,x2-x1,y2-y1);
+ return{ok:true,ratio,cm:(x2-x1)/w*S.fov}}
+$('cFile').onchange=e=>{const f=e.target.files[0];if(!f)return;cnnFile=f;$('cnnDel').hidden=false;$('cnnNote').hidden=true;const img=new Image();
+ img.onload=()=>{const r=analyzeImage(img);URL.revokeObjectURL(img.src);const pc=(r.ratio*100).toFixed(1);
+  if(!r.ok){cnnReset('Foto tidak diproses karena bukan selada.');
+   note('bad','Foto bukan selada','Area daun hijau hanya '+pc+'% dari foto (minimal '+LEAF_MIN*100+'%). Unggah foto daun selada yang jelas.');return}
+  const w=+r.cm.toFixed(1);$('cnnW').textContent=w+' cm';cnnShow(w,null,'Segmentasi foto');
+  $('cnnMsg').textContent='Area daun ditandai merah muda, lebar diukur antara garis tepi hijau. Ukuran cm bergantung pada "Lebar bidang foto" pada KONFIGURASI di kode (sekarang '+S.fov+' cm).';
+  note('ok','Selada terdeteksi','Area daun hijau mencakup '+pc+'% foto. Lebar daun sekitar '+w+' cm, fase '+$('cnnCls').textContent+'.')};
+ img.onerror=()=>cnnReset('File tidak bisa dibaca sebagai gambar.');img.src=URL.createObjectURL(f)};
+$('cnnDel').onclick=()=>{cnnFile=null;$('cFile').value='';const cv=$('cPrev');cv.getContext('2d').clearRect(0,0,cv.width,cv.height);cv.style.display='none';
+ $('cnnNote').hidden=true;$('cnnDel').hidden=true;cnnReset('Foto dihapus. Unggah foto daun selada untuk memulai lagi.')};
+$('cnnRemote').onclick=async()=>{if(!cnnFile){$('cnnMsg').textContent='Pilih foto daun terlebih dahulu.';return}
+ if(!S.cnn){$('cnnMsg').textContent='URL model CNN belum diatur (nilai cnn pada bagian KONFIGURASI di kode).';return}
+ try{const fd=new FormData();fd.append('file',cnnFile);const j=await(await fetch(S.cnn,{method:'POST',body:fd})).json(),w=+j.lebar_daun_cm;
+  const pr=Array.isArray(j.probabilitas)&&j.probabilitas.length===4?j.probabilitas.map(x=>x*100):null;
+  if(j.selada===false){cnnReset('Foto bukan selada menurut model CNN.');note('bad','Foto bukan selada','Model CNN tidak mengenali foto ini sebagai selada.');return}
+  if(!pr&&isNaN(w))throw new Error('respons tidak berisi lebar_daun_cm atau probabilitas');
+  if(!isNaN(w))$('cnnW').textContent=w.toFixed(1)+' cm';cnnShow(pr?w:w,pr,'Model CNN');if(j.selada===true)note('ok','Selada terdeteksi','Model CNN mengenali foto ini sebagai selada.');$('cnnMsg').textContent='Hasil diambil dari model CNN.'}
+ catch(e){$('cnnMsg').textContent='Gagal menghubungi model: '+e.message}};
+
+/* perbesar kamera */
+$('camBig').onclick=()=>{const w=document.querySelector('.kgrid').classList.toggle('wide');$('camBig').textContent=w?'Perkecil':'Perbesar';setTimeout(()=>$('cam').scrollIntoView({behavior:'smooth',block:'nearest'}),50)};
+const goFull=()=>{const c=$('cam');document.fullscreenElement?document.exitFullscreen():(c.requestFullscreen?c.requestFullscreen():($('camMsg').textContent='Browser tidak mendukung layar penuh.'))};
+$('camFull').onclick=goFull;$('cam').ondblclick=goFull;
+
+/* grafik real-time sejak awal */
+let mPaused=false,lastRecv=0;const MAXP=300;
+function matur(t){const st=S.mulai||startT;if(!st)return 0;return Math.max(0,Math.min(100,(t-new Date(st+'T00:00:00'))/864e5/S.panen*100))}
+function liveState(){const e=$('mLive');let t,c='badge';
+ if(mPaused)t='Jeda';else if(!rows.length)t='Menunggu data';else if(Date.now()-lastRecv<10000){t='● LIVE';c='badge ok'}else{t='Tidak ada data baru';c='badge warn'}
+ e.textContent=t;e.className=c}
+function updateMonitor(force){
+ if((mPaused&&!force)||!rows.length)return;
+ const sel=$('mRange').value,src=sel==='all'?rows:rows.slice(-(+sel)),k=Math.max(1,Math.ceil(src.length/MAXP)),L=[],T=[],H=[],So=[],M=[];
+ const fm=rows[rows.length-1].t-rows[0].t>864e5?{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}:{hour:'2-digit',minute:'2-digit',second:'2-digit'};
+ for(let i=0;i<src.length;i+=k){const b=src.slice(i,i+k),av=key=>b.reduce((a,r)=>a+r[key],0)/b.length;
+  L.push(new Date(b[0].t).toLocaleString('id-ID',fm));T.push(+av('temp').toFixed(1));H.push(+av('hum').toFixed(1));So.push(+av('soil').toFixed(1));M.push(+matur(b[b.length-1].t).toFixed(2))}
+ [['mSuhu',T],['mHum',H],['mSoil',So],['mMat',M]].forEach(([k,d])=>{const c=charts[k];c.data.labels=L;c.data.datasets[0].data=d;c.data.datasets[0].pointRadius=L.length>80?0:2;c.update()});
+ $('mvT').textContent=T[T.length-1]+' °C';$('mvH').textContent=H[H.length-1]+' %';$('mvS').textContent=So[So.length-1]+' %';$('mvM').textContent=M[M.length-1]+' %';
+ $('mInfo').textContent=rows.length+' data sejak '+fmtT(rows[0].t)+' · ditampilkan '+L.length+' titik'+(k>1?' (rata-rata tiap '+k+' data)':'')+' · kematangan '+M[M.length-1]+'%';liveState()}
+$('mPause').onclick=()=>{mPaused=!mPaused;$('mPause').textContent=mPaused?'Lanjutkan':'Jeda';if(!mPaused)updateMonitor(true);liveState()};
+$('mRange').onchange=()=>updateMonitor(true);
+
+/* riwayat */
+$('range').onchange=refresh;$('btnReload').onclick=loadAll;
+$('btnClear').onclick=()=>{rows=[];renderTable();['mSuhu','mHum','mSoil','mMat','all','dht','soil'].forEach(k=>{charts[k].data.labels=[];charts[k].data.datasets.forEach(d=>d.data=[]);charts[k].update()})};
+$('btnCsv').onclick=()=>{if(!rows.length)return;const csv='waktu,suhu,kelembapan_udara,kelembapan_tanah,status,pompa\n'+rows.map(r=>[new Date(r.t).toISOString(),r.temp,r.hum,r.soil,r.status,r.pump?'ON':'OFF'].join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='riwayat-selada.csv';a.click()};
+
+setup();camInfo();theme();renderTable();renderLstm();restart();baseline();
+</script>
 </body>
-
 </html>
