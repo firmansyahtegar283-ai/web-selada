@@ -1522,8 +1522,8 @@
   <div id="toasts" role="status" aria-live="polite"></div>
   <script>
     const $ = id => document.getElementById(id), css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-    /* KONFIGURASI: ubah nilai di sini (url Firebase, ip kamera, url model CNN, lebar bidang foto, mulai = tanggal hari pertama data (YYYY-MM-DD, kosong = otomatis dari data pertama), panen = hari panen, lstm = url model LSTM) */
-    const DEF = { url: 'https://smart-farming-selada-default-rtdb.asia-southeast1.firebasedatabase.app/kelompok2.json', poll: 2000, cnn: '', pxcm: 40, mulai: '', panen: 45, lstm: '', demo: false, theme: 'dark', cam: '10.96.92.235', cp: 80, sp: 81, sPath: '/stream', tmin: 20, tmax: 28, hmin: 60, hmax: 80, smin: 60, smax: 80 };
+    /* KONFIGURASI: ubah nilai di sini (url Firebase, ip kamera, url model CNN, fov = lebar bidang foto dalam cm (lebar area nyata yang tertangkap kamera saat memotret), mulai = tanggal hari pertama data (YYYY-MM-DD, kosong = otomatis dari data pertama), panen = hari panen, lstm = url model LSTM) */
+    const DEF = { url: 'https://smart-farming-selada-default-rtdb.asia-southeast1.firebasedatabase.app/kelompok2.json', poll: 2000, cnn: '', fov: 35, mulai: '', panen: 45, lstm: '', demo: false, theme: 'dark', cam: '10.96.92.235', cp: 80, sp: 81, sPath: '/stream', tmin: 20, tmax: 28, hmin: 60, hmax: 80, smin: 60, smax: 80 };
     let S = { ...DEF }; try { S = { ...DEF, ...JSON.parse(localStorage.getItem('selada') || '{}') } } catch (e) { }
     (function () { const r = document.documentElement; S.theme === 'auto' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', S.theme) })();
     let rows = [], seen = new Set(), alerts = [], lastState = '', unread = 0, timer = null, demoT = 26, demoS = 70, charts = {};
@@ -1785,7 +1785,7 @@
       charts.cnn.data.datasets[0].data = pr.map(v => +v.toFixed(1)); charts.cnn.data.datasets[0].backgroundColor = CLS.map((k, i) => i === m ? k.col : k.col + '55'); charts.cnn.update();
       const bd = $('cnnBadge'); bd.hidden = false; bd.className = 'badge ok'; bd.textContent = CLS[m].n + ' (' + pr[m].toFixed(1) + '%)';
       $('cnnW').textContent = ok ? w.toFixed(2) + ' cm' : '-';
-      $('cnnPx').textContent = px != null && ok ? Math.round(px) + ' px ÷ ' + S.pxcm + ' px/cm = ' + w.toFixed(2) + ' cm' : 'Sumber: ' + src;
+      $('cnnPx').textContent = px != null && ok ? px.toFixed(0) + '% lebar foto × ' + S.fov + ' cm = ' + w.toFixed(2) + ' cm' : 'Sumber: ' + src;
       $('cnnBars').innerHTML = CLS.map((k, i) => `<div><div class="row" style="border:0;padding:6px 0 4px"><span>${k.n}</span><b>${pr[i].toFixed(1)}%</b></div><div class="prog"><i style="width:${pr[i]}%;background:${k.col}"></i></div></div>`).join('')
     }
     function disShow(p) {
@@ -1835,9 +1835,22 @@
 
       const ratio = (cnt[0] + cnt[1]) / n;
       if (ratio < LEAF_MIN || leaf < 1) return { ok: false, ratio };
-      let c = 0, x1 = 0, x2 = w - 1; for (let i = 0; i < w; i++) { c += hist[i]; if (c >= leaf * .01) { x1 = i; break } } c = 0; for (let i = w - 1; i >= 0; i--) { c += hist[i]; if (c >= leaf * .01) { x2 = i; break } }
-      const px = (x2 - x1 + 1) / w * img.naturalWidth;
-      return { ok: true, ratio, px, cm: px / S.pxcm, pct: { kuning: cnt[1] / leaf * 100, nekrosis: cnt[2] / leaf * 100, bercak: cnt[3] / leaf * 100, lubang: cnt[4] / leaf * 100 } }
+      /* lebar = satu tanaman terbesar (komponen daun hijau/kuning terbesar), bukan seluruh sebaran daun di foto */
+      const lab = new Uint8Array(n); let best = null;
+      for (let s0 = 0; s0 < n; s0++) {
+        if (lab[s0] || bg[s0] || cls[s0] > 1) continue;
+        let size = 0, mn = w, mx = 0; sp = 0; st[sp++] = s0; lab[s0] = 1;
+        while (sp) {
+          const p = st[--sp], px0 = p % w, py0 = (p - px0) / w; size++; if (px0 < mn) mn = px0; if (px0 > mx) mx = px0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const nx = px0 + dx, ny = py0 + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const u = ny * w + nx; if (!lab[u] && !bg[u] && cls[u] < 2) { lab[u] = 1; st[sp++] = u }
+          }
+        }
+        if (!best || size > best.size) best = { size, mn, mx }
+      }
+      const fr = best ? (best.mx - best.mn + 1) / w : 0;
+      return { ok: true, ratio, px: fr * 100, cm: fr * S.fov, pct: { kuning: cnt[1] / leaf * 100, nekrosis: cnt[2] / leaf * 100, bercak: cnt[3] / leaf * 100, lubang: cnt[4] / leaf * 100 } }
     }
     $('cFile').onchange = e => {
       const f = e.target.files[0]; if (!f) return; cnnFile = f; $('cnnDel').hidden = false; $('cnnNote').hidden = true; const img = new Image();
@@ -1849,7 +1862,7 @@
           note('bad', 'Foto bukan selada', 'Area daun hijau hanya ' + pc + '% dari foto (minimal ' + LEAF_MIN * 100 + '%). Unggah foto daun selada yang jelas.'); return
         }
         cnnShow(r.cm, null, 'Segmentasi foto', r.px); disShow(r.pct);
-        $('cnnMsg').textContent = 'Lebar daun dihitung dari area daun hasil segmentasi (px) dibagi ' + S.pxcm + ' px/cm. Ubah nilai pxcm pada KONFIGURASI di kode sesuai kalibrasi kameramu.';
+        $('cnnMsg').textContent = 'Lebar daun = persentase lebar foto yang terisi selada × ' + S.fov + ' cm (lebar bidang foto). Ubah nilai fov pada KONFIGURASI di kode sesuai jarak dan lebar bidang foto kameramu.';
         note('ok', 'Selada terdeteksi', 'Lebar daun sekitar ' + r.cm.toFixed(1) + ' cm, fase ' + $('cnnBadge').textContent + '.');
         const pr = cnnScore(r.cm), m = pr.indexOf(Math.max(...pr));
         addCnnHist({ file: f.name, w: r.cm.toFixed(2), fase: CLS[m].n, p: pr[m].toFixed(1), dis: topDis(r.pct), src: 'Segmentasi foto' })
