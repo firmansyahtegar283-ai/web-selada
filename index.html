@@ -1128,6 +1128,48 @@
         grid-template-columns: 1fr
       }
     }
+
+    /* history */
+    .hbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px
+    }
+
+    .hact {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px
+    }
+
+    .tab {
+      border: 0;
+      background: none;
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--muted)
+    }
+
+    .tab:hover {
+      background: var(--bg)
+    }
+
+    .tab.on {
+      background: var(--accent);
+      color: var(--accent-ink)
+    }
   </style>
 </head>
 
@@ -1142,6 +1184,7 @@
       <button data-p="kamera"><span class="i">📷</span><span class="t">Kamera ESP32-CAM</span></button>
       <button data-p="pompa"><span class="i">🧠</span><span class="t">CNN</span></button>
       <button data-p="prediksi"><span class="i">⏱️</span><span class="t">LSTM</span></button>
+      <button data-p="history"><span class="i">📋</span><span class="t">History</span></button>
     </nav>
     <div class="sfoot">Firebase Realtime DB<br>ESP32 + DHT22 + Soil + Relay</div>
   </aside>
@@ -1354,7 +1397,7 @@
             <p class="leg" id="cnnLeg" hidden>Warna segmentasi:
               <i style="background:#22c55e"></i>hijau sehat<i style="background:#facc15"></i>kuning menguning<i
                 style="background:#f97316"></i>oranye nekrosis<i style="background:#ef4444"></i>merah bercak gelap<i
-                style="background:#38bdf8"></i>biru lubang
+                style="background:#38bdf8"></i>biru lubang<i style="background:#1e293b"></i>abu gelap latar (diabaikan)
             </p>
             <div class="btns"><button class="btn bad" id="cnnDel" type="button" hidden>🗑 Hapus Gambar</button><button
                 class="btn alt" id="cnnRemote" type="button">Kirim foto ke model CNN</button></div>
@@ -1449,6 +1492,29 @@
         </div>
       </section>
 
+      <!-- HISTORY -->
+      <section class="page" id="p-history">
+        <div class="panel">
+          <div class="hbar">
+            <div>
+              <h2>History</h2>
+              <p class="hint" style="margin:0">Riwayat data sensor dari Firebase dan hasil analisis CNN</p>
+            </div>
+            <div class="hact">
+              <input id="hSearch" type="search" placeholder="Cari..." style="width:180px" autocomplete="off">
+              <button class="btn" id="hCsv" type="button">⬇ Export CSV</button>
+              <button class="btn alt" id="hDel" type="button">🗑 Hapus</button>
+            </div>
+          </div>
+          <div class="scroll">
+            <table>
+              <thead id="hHead"></thead>
+              <tbody id="hBody"></tbody>
+            </table>
+          </div>
+          <p class="hint" id="hInfo" style="margin:10px 0 0"></p>
+        </div>
+      </section>
 
     </main>
   </div>
@@ -1461,7 +1527,7 @@
     let S = { ...DEF }; try { S = { ...DEF, ...JSON.parse(localStorage.getItem('selada') || '{}') } } catch (e) { }
     (function () { const r = document.documentElement; S.theme === 'auto' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', S.theme) })();
     let rows = [], seen = new Set(), alerts = [], lastState = '', unread = 0, timer = null, demoT = 26, demoS = 70, charts = {};
-    const TITLES = { ringkasan: 'Monitoring', grafik: 'Grafik sensor', kamera: 'Kamera ESP32-CAM', pompa: 'CNN', prediksi: 'LSTM' };
+    const TITLES = { ringkasan: 'Monitoring', grafik: 'Grafik sensor', kamera: 'Kamera ESP32-CAM', pompa: 'CNN', prediksi: 'LSTM', history: 'History' };
 
     /* navigasi + hamburger */
     function go(p) {
@@ -1503,7 +1569,7 @@
       return n
     }
     function addRow(r) {
-      r.pump = r.soil < S.smin; rows.push(r); if (rows.length > 20000) rows.shift();
+      r.pump = r.soil < S.smin; r.mode = S.demo ? 'Demo' : 'Firebase'; r.cnn = cnnLast(); rows.push(r); if (rows.length > 20000) rows.shift();
       if (!S.mulai && !startT) { startT = dayStr(r.t); try { localStorage.setItem('seladaMulai', startT) } catch (e) { } }
     }
     async function loadAll() {
@@ -1599,6 +1665,7 @@
       }
       else sub = 'Prediksi untuk ' + rng + '. Belum ada data sensor, hasil muncul setelah data pertama masuk.';
       lstmPreds = preds || null; $('lSub').textContent = sub;
+      if (last && preds) last.lstm = 'Hari ke-' + hp + ': ' + preds[0].toFixed(1) + '% (' + stage(preds[0]) + ')';
       $('lCards').innerHTML = [0, 1, 2, 3].map(i => {
         const p = preds ? preds[i] : null, im = lImgs[i], d = hp + i;
         return `<div class="lcard"><div class="top"><span>HARI KE-${d}</span><span class="badge ${p == null ? '' : 'ok'}">${p == null ? 'Menunggu' : stage(p)}</span></div><div class="pct">${p == null ? '--' : p.toFixed(1)}%</div><div class="prog"><i style="width:${p == null ? 0 : p}%"></i></div><div class="vis">Visualisasi Kondisi</div><div class="vbox" data-i="${i}" role="button" tabindex="0" aria-label="Unggah foto hari ke-${d}">${im ? `<img src="${im}" alt="Foto kondisi hari ke-${d}"><button class="vdel" data-del="${i}" type="button">Hapus</button>` : '＋ Unggah foto'}</div></div>`
@@ -1639,6 +1706,7 @@
     };
 
     function renderTable() {
+      renderHistory();
       const tb = $('tb'); if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">Belum ada data. Data muncul otomatis saat ada data baru masuk ke Firebase.</td></tr>'; return }
       tb.innerHTML = rows.slice(-100).reverse().map(r => `<tr><td>${new Date(r.t).toLocaleString('id-ID')}</td><td>${r.temp} °C</td><td>${r.hum} %</td><td>${r.soil} %</td><td>${r.status}</td><td><span class="badge ${r.pump ? 'warn' : 'ok'}">${r.pump ? 'ON' : 'OFF'}</span></td></tr>`).join('')
     }
@@ -1738,6 +1806,8 @@
       t.querySelector('button').onclick = () => t.remove(); $('toasts').appendChild(t); setTimeout(() => t.remove(), 7000)
     }
     function note(type, title, msg) { const n = $('cnnNote'); n.hidden = false; n.className = 'note ' + type; n.innerHTML = '<b></b><span></span>'; n.querySelector('b').textContent = (type === 'ok' ? '✅ ' : '⚠️ ') + title; n.querySelector('span').textContent = msg; toast(type, title, msg) }
+
+    /* analisis foto: hanya area selada yang dihitung (latar = piksel non-hijau yang tersambung ke tepi foto) */
     function analyzeImage(img) {
       const sc = Math.min(1, 480 / img.width), w = Math.round(img.width * sc), h = Math.round(img.height * sc), n = w * h;
       const o = $('cOrig'); o.width = w; o.height = h; const ox = o.getContext('2d', { willReadFrequently: true }); ox.drawImage(img, 0, 0, w, h);
@@ -1745,7 +1815,6 @@
       const a = ox.getImageData(0, 0, w, h).data, out = x.createImageData(w, h), q = out.data;
       const cls = new Uint8Array(n); for (let i = 0, p = 0; p < n; i += 4, p++) cls[p] = classify(a[i], a[i + 1], a[i + 2]);
 
-      /* latar = piksel non-hijau yang tersambung ke tepi foto */
       const bg = new Uint8Array(n), st = new Int32Array(n); let sp = 0;
       const add = p => { if (cls[p] > 1 && !bg[p]) { bg[p] = 1; st[sp++] = p } };
       for (let i = 0; i < w; i++) { add(i); add((h - 1) * w + i) }
@@ -1776,11 +1845,14 @@
         const r = analyzeImage(img); URL.revokeObjectURL(img.src); $('cnnImgs').hidden = false; $('cnnLeg').hidden = false; const pc = (r.ratio * 100).toFixed(1);
         if (!r.ok) {
           cnnReset('Foto tidak diproses karena bukan selada.');
+          addCnnHist({ file: f.name, w: '-', fase: '-', p: '-', dis: 'Bukan selada', src: 'Segmentasi foto' });
           note('bad', 'Foto bukan selada', 'Area daun hijau hanya ' + pc + '% dari foto (minimal ' + LEAF_MIN * 100 + '%). Unggah foto daun selada yang jelas.'); return
         }
         cnnShow(r.cm, null, 'Segmentasi foto', r.px); disShow(r.pct);
         $('cnnMsg').textContent = 'Lebar daun dihitung dari area daun hasil segmentasi (px) dibagi ' + S.pxcm + ' px/cm. Ubah nilai pxcm pada KONFIGURASI di kode sesuai kalibrasi kameramu.';
-        note('ok', 'Selada terdeteksi', 'Lebar daun sekitar ' + r.cm.toFixed(1) + ' cm, fase ' + $('cnnBadge').textContent + '.')
+        note('ok', 'Selada terdeteksi', 'Lebar daun sekitar ' + r.cm.toFixed(1) + ' cm, fase ' + $('cnnBadge').textContent + '.');
+        const pr = cnnScore(r.cm), m = pr.indexOf(Math.max(...pr));
+        addCnnHist({ file: f.name, w: r.cm.toFixed(2), fase: CLS[m].n, p: pr[m].toFixed(1), dis: topDis(r.pct), src: 'Segmentasi foto' })
       };
       img.onerror = () => cnnReset('File tidak bisa dibaca sebagai gambar.'); img.src = URL.createObjectURL(f)
     };
@@ -1796,7 +1868,9 @@
         const pr = Array.isArray(j.probabilitas) && j.probabilitas.length === CLS.length ? j.probabilitas.map(x => x * 100) : null;
         if (j.selada === false) { cnnReset('Foto bukan selada menurut model CNN.'); note('bad', 'Foto bukan selada', 'Model CNN tidak mengenali foto ini sebagai selada.'); return }
         if (!pr && isNaN(w)) throw new Error('respons tidak berisi lebar_daun_cm atau probabilitas');
-        cnnShow(isNaN(w) ? NaN : w, pr, 'Model CNN'); if (j.selada === true) note('ok', 'Selada terdeteksi', 'Model CNN mengenali foto ini sebagai selada.'); $('cnnMsg').textContent = 'Hasil diambil dari model CNN.'
+        cnnShow(isNaN(w) ? NaN : w, pr, 'Model CNN'); if (j.selada === true) note('ok', 'Selada terdeteksi', 'Model CNN mengenali foto ini sebagai selada.'); $('cnnMsg').textContent = 'Hasil diambil dari model CNN.';
+        const p2 = pr || cnnScore(w), m2 = p2.indexOf(Math.max(...p2));
+        addCnnHist({ file: cnnFile.name, w: isNaN(w) ? '-' : w.toFixed(2), fase: CLS[m2].n, p: p2[m2].toFixed(1), dis: '-', src: 'Model CNN' })
       }
       catch (e) { $('cnnMsg').textContent = 'Gagal menghubungi model: ' + e.message }
     };
@@ -1914,6 +1988,57 @@
     };
     $('pinLock').onclick = () => { unlocked = false; camInfo(); pinUI(); pmsg('IP kamera dikunci kembali.') };
     $('pinIn').onkeydown = e => { if (e.key === 'Enter') $('pinBtn').click() };
+
+    /* ===== HISTORY ===== */
+    let cnnHist = [];
+    try { const x = JSON.parse(localStorage.getItem('seladaCnn') || '[]'); if (Array.isArray(x)) cnnHist = x } catch (e) { }
+    const p2d = n => String(n).padStart(2, '0');
+    const fullT = t => { const d = new Date(t); return d.getFullYear() + '-' + p2d(d.getMonth() + 1) + '-' + p2d(d.getDate()) + ' ' + p2d(d.getHours()) + ':' + p2d(d.getMinutes()) + ':' + p2d(d.getSeconds()) };
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function topDis(p) {
+      const l = DIS.map(d => ({ n: d.n.split(' (')[0], v: p[d.k], s: sev(p[d.k]) })).filter(d => d.s).sort((a, b) => b.v - a.v);
+      return l.length ? l[0].n + ' (' + l[0].s + ')' : 'Sehat'
+    }
+    function addCnnHist(o) {
+      cnnHist.push({ t: Date.now(), ...o }); if (cnnHist.length > 200) cnnHist.shift();
+      try { localStorage.setItem('seladaCnn', JSON.stringify(cnnHist)) } catch (e) { }
+      if (rows.length) rows[rows.length - 1].cnn = cnnLast();
+      renderHistory()
+    }
+    function cnnLast() {
+      const c = cnnHist[cnnHist.length - 1]; if (!c) return '-';
+      return c.fase === '-' ? c.dis : c.fase + ' (' + c.p + '%)' + (c.w !== '-' ? ' · ' + c.w + ' cm' : '')
+    }
+    function histData() {
+      return {
+        head: ['Waktu', 'Soil (%)', 'Suhu (°C)', 'Kelembapan (%)', 'Pompa', 'Mode', 'Hasil LSTM', 'Hasil CNN'],
+        rec: rows.slice().reverse().map(r => [fullT(r.t), r.soil, r.temp, r.hum, r.pump ? 'ON' : 'OFF', r.mode || 'Firebase', r.lstm || '-', r.cnn || '-'])
+      }
+    }
+    function renderHistory() {
+      const { head, rec } = histData(), q = $('hSearch').value.trim().toLowerCase();
+      const f = q ? rec.filter(r => r.join(' ').toLowerCase().includes(q)) : rec, shown = f.slice(0, 500);
+      $('hHead').innerHTML = '<tr>' + head.map(h => '<th>' + h + '</th>').join('') + '</tr>';
+      $('hBody').innerHTML = shown.length
+        ? shown.map(r => '<tr>' + r.map((v, i) => head[i] === 'Pompa'
+          ? '<td><span class="badge ' + (v === 'ON' ? 'warn' : 'ok') + '">' + v + '</span></td>'
+          : '<td>' + esc(v) + '</td>').join('') + '</tr>').join('')
+        : '<tr><td colspan="' + head.length + '" class="empty">' + (q ? 'Tidak ada hasil untuk pencarian ini.' : 'Belum ada data.') + '</td></tr>';
+      $('hInfo').textContent = 'Menampilkan ' + shown.length + ' dari ' + f.length + ' data' + (f.length > 500 ? ' (500 terbaru)' : '') + '.'
+    }
+    $('hSearch').oninput = renderHistory;
+    $('hCsv').onclick = () => {
+      const { head, rec } = histData(); if (!rec.length) return;
+      const qt = v => '"' + String(v).replace(/"/g, '""') + '"';
+      const csv = '\ufeff' + [head, ...rec].map(r => r.map(qt).join(',')).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      a.download = 'history-sensor.csv'; a.click()
+    };
+    $('hDel').onclick = () => {
+      if (!confirm('Hapus semua data pada tampilan ini?')) return;
+      $('btnClear').click()
+    };
 
     setup(); cardInfo(); camInfo(); theme(); renderTable(); renderLstm(); restart(); baseline(); loadPin();
   </script>
